@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDi
 import { dateRange, initials, money } from '@/lib/format';
 import { GAMES, gameLabel, useGame } from '@/lib/game';
 import { colors, fonts, gameColors, radius, space, touch, type } from '@/lib/theme';
-import type { GameKey, TournamentSummary } from '@/lib/types';
+import type { GameKey, SquadMember, TournamentSummary } from '@/lib/types';
 
 export function Screen({ children }: { children: ReactNode }) {
   return <View style={styles.screen}>{children}</View>;
@@ -169,6 +169,38 @@ export function TournamentCard({ t }: { t: TournamentSummary }) {
         </View>
       </Pressable>
     </Link>
+  );
+}
+
+const PLAYING = ['player', 'captain', 'substitute'];
+
+/** A squad as linked names: players first (captain / sub marked), then staff with their role. */
+export function SquadLine({ members }: { members: SquadMember[] }) {
+  const name = (m: SquadMember, label?: string) =>
+    m.id ? (
+      <Link key={m.id + m.role} href={{ pathname: '/player/[id]', params: { id: m.id } }} style={styles.text}>
+        {m.player}
+        {label ? <Text style={styles.muted}> {label}</Text> : null}
+      </Link>
+    ) : (
+      <Text key={m.player + m.role} style={styles.text}>
+        {m.player}
+        {label ? <Text style={styles.muted}> {label}</Text> : null}
+      </Text>
+    );
+  const players = members.filter((m) => PLAYING.includes(m.role));
+  const staff = members.filter((m) => !PLAYING.includes(m.role));
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.md, rowGap: 6 }}>
+        {players.map((m) => name(m, m.role === 'captain' ? '(C)' : m.role === 'substitute' ? '(sub)' : undefined))}
+      </View>
+      {staff.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.md, rowGap: 6 }}>
+          {staff.map((m) => name(m, `(${m.role})`))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 

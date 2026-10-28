@@ -154,13 +154,22 @@ def build(con, out):
     history = defaultdict(list)
     squads = {}
     team_game = {}
+    # player careers collected from every roster: one entry per tournament played
+    aliases = {(w, a): p for w, a, p in con.execute("SELECT wiki, alias, page FROM player_alias")}
+    careers = defaultdict(list)
+    player_meta = {}
+
+    def player_id(wiki, alias):
+        return team_id(wiki, aliases.get((wiki, alias)) or alias)
 
     for r, s in tours:
         tid, wiki = r["id"], r["wiki"]
         placements = []
+        place_of = {}
         for place, team, prize in con.execute("SELECT place, team, prize FROM placements WHERE tournament_id = ? "
                                               "ORDER BY place", (tid,)):
             t = teams.get(wiki, team)
+            place_of.setdefault(t["id"], (place, prize))
             placements.append({"place": place, "team": t, "prize": prize})
             history[t["id"]].append({**{k: s[k] for k in ("id", "name", "tier", "start", "currency")},
                                      "place": place, "prize": prize})
@@ -195,9 +204,15 @@ def build(con, out):
             })
 
         squad = defaultdict(list)
-        for team, player, role in con.execute("SELECT team, player, role FROM rosters WHERE tournament_id = ?", (tid,)):
+        for team, player, role, page in con.execute(
+                "SELECT team, player, role, COALESCE(page, player) FROM rosters WHERE tournament_id = ?", (tid,)):
             t = teams.get(wiki, team)
-            squad[t["id"]].append({"player": player, "role": role})
+            pid = player_id(wiki, page)
+            squad[t["id"]].append({"player": player, "role": role, "id": pid})
+            place, prize = place_of.get(t["id"], (None, None))
+            careers[pid].append({**{k: s[k] for k in ("id", "name", "tier", "start", "currency")},
+                                 "team": t, "role": role, "place": place, "prize": prize})
+            player_meta.setdefault(pid, (wiki, aliases.get((wiki, page)), player, s["game"]))
             team_game.setdefault(t["id"], (s["game"], t["name"]))
             # rows are newest tournament first, so the first squad seen is the latest
             squads.setdefault(t["id"], {"tournament": s["name"], "players": squad[t["id"]]})
@@ -222,7 +237,66 @@ def build(con, out):
         })
     team_index.sort(key=lambda t: (-t["titles"], -t["events"], t["name"]))
     write(out, "teams/index.json", team_index)
-    return len(tours), len(team_index)
+    n_players = write_players(con, out, careers, player_meta)
+    return len(tours), len(team_index), n_players
+
+
+SOCIAL_URL = {
+    "instagram": "https://instagram.com/{}", "youtube": "https://youtube.com/{}", "twitter": "https://x.com/{}",
+    "twitch": "https://twitch.tv/{}", "facebook": "https://facebook.com/{}", "kick": "https://kick.com/{}",
+}
+PLAYING = ("player", "captain", "substitute")
+
+
+def write_players(con, out, careers, player_meta):
+    """players/<id>.json: Liquipedia profile + career built from the rosters; players/index.json for search."""
+    profiles = {(r["wiki"], r["page"]): r for r in con.execute("SELECT * FROM players")}
+    index = []
+    for pid, events in careers.items():
+        wiki, page, shown, game = player_meta[pid]
+        prof = profiles.get((wiki, page))
+        events.sort(key=lambda e: e["start"] or "")
+        # consecutive tournaments with the same team make one stint
+        timeline = []
+        for e in events:
+            if timeline and timeline[-1]["team"]["id"] == e["team"]["id"]:
+                timeline[-1]["to"] = e["start"]
+                timeline[-1]["events"] += 1
+            else:
+                timeline.append({"team": e["team"], "from": e["start"], "to": e["start"], "events": 1})
+        played = [e for e in events if e["role"] in PLAYING]
+        titles = sum(1 for e in played if e["place"] == 1)
+        latest = events[-1]
+        links = {k: SOCIAL_URL[k].format(v) for k, v in json.loads(prof["links"] or "{}").items()
+                 if k in SOCIAL_URL} if prof else {}
+        data = {
+            "id": pid, "game": game,
+            "tag": (prof and prof["tag"]) or shown,
+            "name": prof and prof["romanized_name"],
+            "nativeName": prof and prof["name"] if prof and prof["name"] != prof["romanized_name"] else None,
+            "birthDate": prof and prof["birth_date"],
+            "country": prof and prof["country"],
+            "roles": prof and prof["roles"],
+            "status": prof and prof["status"],
+            "yearsActive": prof and prof["years_active"],
+            "links": links,
+            "source": f"https://liquipedia.net/{wiki}/{page.replace(' ', '_')}" if page else None,
+            "currentTeam": latest["team"],
+            "lastRole": latest["role"],
+            "listedHistory": json.loads(prof["history"]) if prof and prof["history"] else [],
+            "timeline": list(reversed(timeline)),
+            "tournaments": list(reversed(events)),
+            "events": len(played), "titles": titles,
+            "podiums": sum(1 for e in played if e["place"] and e["place"] <= 3),
+            # what the player's teams won in events the player was rostered for (not a personal payout)
+            "teamWinnings": sum(e["prize"] or 0 for e in played if (e["currency"] or "").lower() == "inr"),
+        }
+        write(out, f"players/{pid}.json", data)
+        index.append({"id": pid, "tag": data["tag"], "name": data["name"], "game": game,
+                      "team": latest["team"]["name"], "events": data["events"], "titles": titles})
+    index.sort(key=lambda p: (-p["titles"], -p["events"], p["tag"].lower()))
+    write(out, "players/index.json", index)
+    return len(index)
 
 
 def main():
@@ -233,8 +307,8 @@ def main():
     if out.exists():
         shutil.rmtree(out)
     con = db.connect()
-    n_t, n_teams = build(con, out)
-    print(f"wrote {n_t} tournaments and {n_teams} teams to {out}")
+    n_t, n_teams, n_players = build(con, out)
+    print(f"wrote {n_t} tournaments, {n_teams} teams and {n_players} players to {out}")
 
 
 if __name__ == "__main__":

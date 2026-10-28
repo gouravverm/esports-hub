@@ -1,7 +1,7 @@
 import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Card, ErrorView, GameBadge, Loading, Screen, SectionTitle, SourceNote, TeamAvatar, styles as ui } from '@/components/ui';
+import { Card, ErrorView, GameBadge, Loading, Screen, SectionTitle, SourceNote, SquadLine, TeamAvatar, styles as ui } from '@/components/ui';
 import { api, useData } from '@/lib/api';
 import { date, money, ordinal } from '@/lib/format';
 import { colors, placeColor, space, type } from '@/lib/theme';
@@ -49,12 +49,7 @@ export default function TeamScreen() {
             <SectionTitle>Latest squad</SectionTitle>
             <Card>
               <Text style={[ui.muted, { marginBottom: 6 }]}>{data.squad.tournament}</Text>
-              {data.squad.players.map((p, i) => (
-                <Text key={`${p.player}-${i}`} style={[ui.text, { paddingVertical: 3 }]}>
-                  {p.player}
-                  {p.role !== 'player' ? <Text style={ui.muted}> · {p.role}</Text> : null}
-                </Text>
-              ))}
+              <SquadLine members={data.squad.players} />
             </Card>
           </>
         )}

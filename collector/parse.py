@@ -107,7 +107,14 @@ def parse_tournament(wikitext):
                     if team and slot_place:
                         placements.append({"place": slot_place, "team": team, "prize": prize})
 
+    return {"info": info, "placements": placements, "rosters": parse_rosters(templates)}
+
+
+def parse_rosters(templates):
+    """Squads from both roster formats. Each row: team, player (as shown), page (the player's
+    Liquipedia page when the roster links one), role, flag."""
     rosters = []
+    # older pages: {{TeamCard |team=X |p1=Name |p1link=Name (Indian player) |p1flag=in |c=Coach}}
     for card in (t for t in templates if _name(t) == "teamcard"):
         team = _param(card, "team")
         if not team:
@@ -124,9 +131,29 @@ def parse_tournament(wikitext):
                 continue
             player = _clean(p.value)
             if player:
-                rosters.append({"team": team, "player": player, "role": role})
-
-    return {"info": info, "placements": placements, "rosters": rosters}
+                rosters.append({"team": team, "player": player, "page": _param(card, f"{key}link") or player,
+                                "role": role, "flag": _param(card, f"{key}flag")})
+    # 2025+ pages: {{TeamParticipants |{{Opponent|team |players={{Persons |{{Person|Name|link=..|role=Captain}} }} }} }}
+    for block in (t for t in templates if _name(t) == "teamparticipants"):
+        for opp in block.params:
+            o = next(iter(mwparserfromhell.parse(str(opp.value)).filter_templates(recursive=False)), None)
+            if o is None or _name(o) != "opponent" or not o.has("1"):
+                continue
+            team = _clean(o.get("1").value)
+            for person in mwparserfromhell.parse(str(o.get("players").value) if o.has("players") else "").filter_templates(recursive=True):
+                if _name(person) != "person" or not person.has("1"):
+                    continue
+                name = _clean(person.get("1").value)
+                staff = (_param(person, "type") or "").lower() == "staff"
+                role = (_param(person, "role") or "").lower()
+                if staff:
+                    role = role or "staff"
+                elif role not in ("captain", "substitute", "sub"):
+                    role = "player"
+                if name and team:
+                    rosters.append({"team": team, "player": name, "page": _param(person, "link") or name,
+                                    "role": "substitute" if role == "sub" else role, "flag": _param(person, "flag")})
+    return rosters
 
 
 HEADING = re.compile(r"^(=+)\s*(.*?)\s*\1\s*$", re.M)

@@ -94,8 +94,60 @@ export interface Tournament extends TournamentSummary {
   source: string;
   placements: { place: number; team: TeamRef; prize: number | null }[];
   stages: Stage[];
-  squads: { team: TeamRef; players: { player: string; role: string }[] }[];
+  squads: { team: TeamRef; players: SquadMember[] }[];
   videos?: Video[];
+}
+
+export interface SquadMember {
+  player: string;
+  role: string; // player | captain | substitute | coach | analyst | staff
+  id?: string; // player profile id
+}
+
+export interface PlayerSummary {
+  id: string;
+  tag: string;
+  name: string | null;
+  game: GameKey;
+  team: string;
+  events: number;
+  titles: number;
+}
+
+export interface PlayerEvent {
+  id: number;
+  name: string;
+  tier: string | null;
+  start: string | null;
+  currency: string | null;
+  team: TeamRef;
+  role: string;
+  place: number | null;
+  prize: number | null;
+}
+
+export interface Player {
+  id: string;
+  game: GameKey;
+  tag: string;
+  name: string | null; // real name, romanised
+  nativeName: string | null;
+  birthDate: string | null;
+  country: string | null;
+  roles: string | null;
+  status: string | null;
+  yearsActive: string | null;
+  links: Record<string, string>;
+  source: string | null;
+  currentTeam: TeamRef;
+  lastRole: string;
+  listedHistory: { from: string | null; to: string | null; team: string }[];
+  timeline: { team: TeamRef; from: string | null; to: string | null; events: number }[];
+  tournaments: PlayerEvent[];
+  events: number;
+  titles: number;
+  podiums: number;
+  teamWinnings: number;
 }
 
 export interface TeamSummary {
@@ -118,5 +170,5 @@ export interface Team extends TeamSummary {
     place: number;
     prize: number | null;
   }[];
-  squad: { tournament: string; players: { player: string; role: string }[] } | null;
+  squad: { tournament: string; players: SquadMember[] } | null;
 }

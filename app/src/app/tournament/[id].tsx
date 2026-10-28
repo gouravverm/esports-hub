@@ -16,6 +16,7 @@ import {
   Pills,
   Screen,
   SourceNote,
+  SquadLine,
   TeamAvatar,
   Winner,
   styles as ui,
@@ -365,14 +366,7 @@ function SquadsView({ t }: { t: Tournament }) {
             <TeamAvatar name={sq.team.name} />
             <TeamLink team={sq.team} bold />
           </View>
-          <Text style={ui.text}>
-            {sq.players.filter((p) => p.role === 'player').map((p) => p.player).join(', ')}
-          </Text>
-          {sq.players.some((p) => p.role !== 'player') && (
-            <Text style={[ui.muted, { marginTop: 4 }]}>
-              {sq.players.filter((p) => p.role !== 'player').map((p) => `${p.player} (${p.role})`).join(', ')}
-            </Text>
-          )}
+          <SquadLine members={sq.players} />
         </Card>
       ))}
     </View>

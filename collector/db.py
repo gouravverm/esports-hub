@@ -51,8 +51,25 @@ CREATE TABLE IF NOT EXISTS placements (
 );
 CREATE TABLE IF NOT EXISTS rosters (
     tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-    team TEXT, player TEXT, role TEXT
+    team TEXT, player TEXT, role TEXT,
+    page TEXT, flag TEXT  -- the player's Liquipedia page (from the roster's link) and country flag
 );
+
+-- player profiles from their Liquipedia pages (Infobox player)
+CREATE TABLE IF NOT EXISTS players (
+    wiki TEXT NOT NULL, page TEXT NOT NULL,   -- resolved page title (after redirects)
+    tag TEXT, name TEXT, romanized_name TEXT, birth_date TEXT, country TEXT,
+    team TEXT, roles TEXT, status TEXT, years_active TEXT,
+    history TEXT, links TEXT,                 -- JSON: [{"from","to","team"}], {"instagram": "..."}
+    revid INTEGER, updated_at TEXT,
+    PRIMARY KEY (wiki, page)
+);
+-- roster spelling / link -> resolved player page
+CREATE TABLE IF NOT EXISTS player_alias (
+    wiki TEXT NOT NULL, alias TEXT NOT NULL, page TEXT,
+    PRIMARY KEY (wiki, alias)
+);
+CREATE INDEX IF NOT EXISTS ix_roster_page ON rosters(page);
 
 -- one stage = one points table (e.g. "Week 1", "Grand Finals")
 CREATE TABLE IF NOT EXISTS stages (
@@ -132,10 +149,11 @@ def connect():
     cols = [r[1] for r in con.execute("PRAGMA table_info(stage_totals)")]
     if cols and "wwcd" not in cols:
         con.execute("ALTER TABLE stage_totals ADD COLUMN wwcd INTEGER")
-    cols = [r[1] for r in con.execute("PRAGMA table_info(tournaments)")]
-    for col in ("ticker", "abbreviation"):
-        if cols and col not in cols:
-            con.execute(f"ALTER TABLE tournaments ADD COLUMN {col} TEXT")
+    for table, new_cols in (("tournaments", ("ticker", "abbreviation")), ("rosters", ("page", "flag"))):
+        cols = [r[1] for r in con.execute(f"PRAGMA table_info({table})")]
+        for col in new_cols:
+            if cols and col not in cols:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
     con.executescript(SCHEMA)
     return con
 
@@ -190,8 +208,8 @@ def save_tournament(con, game, wiki, page, revid, parsed):
     con.execute("DELETE FROM rosters WHERE tournament_id = ?", (tid,))
     con.executemany("INSERT INTO placements VALUES (?, ?, ?, ?)",
                     [(tid, p["place"], p["team"], p["prize"]) for p in parsed["placements"]])
-    con.executemany("INSERT INTO rosters VALUES (?, ?, ?, ?)",
-                    [(tid, r["team"], r["player"], r["role"]) for r in parsed["rosters"]])
+    con.executemany("INSERT INTO rosters (tournament_id, team, player, role, page, flag) VALUES (?, ?, ?, ?, ?, ?)",
+                    [(tid, r["team"], r["player"], r["role"], r.get("page"), r.get("flag")) for r in parsed["rosters"]])
     return tid
 
 

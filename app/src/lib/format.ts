@@ -51,6 +51,16 @@ export function ago(iso: string | null | undefined): string {
   return future ? `in ${text}` : `${text} ago`;
 }
 
+/** '2002-09-21' -> 24 (age today); partly known dates -> null. */
+export function age(birth: string | null | undefined): number | null {
+  if (!birth || !/^\d{4}-\d{2}-\d{2}$/.test(birth)) return null;
+  const b = new Date(birth);
+  const now = new Date();
+  let years = now.getFullYear() - b.getFullYear();
+  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) years--;
+  return years;
+}
+
 export function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;

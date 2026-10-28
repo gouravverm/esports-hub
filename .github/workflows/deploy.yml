@@ -52,6 +52,10 @@ jobs:
         working-directory: collector
         run: python run.py
 
+      - name: Collect player profiles
+        working-directory: collector
+        run: python players.py
+
       - name: Collect YouTube streams and videos
         working-directory: collector
         env:

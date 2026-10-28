@@ -14,7 +14,7 @@ import re
 import sys
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import config
 import db
@@ -160,6 +160,13 @@ def main():
         resolve_channels(con, key)
         n = fetch_videos(con, key)
         print(f"[youtube] {n} recent videos from {len(config.YOUTUBE_CHANNELS)} channels")
+    # YouTube API policy: data not refreshed within 30 days must be deleted. Videos that dropped
+    # out of a channel's latest uploads stop being refreshed, so they go after 30 days.
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat(timespec="seconds")
+    gone = con.execute("DELETE FROM yt_videos WHERE updated_at < ?", (cutoff,)).rowcount
+    con.commit()
+    if gone:
+        print(f"[youtube] removed {gone} videos not refreshed for 30 days")
     matched = match_tournaments(con)
     live = con.execute("SELECT COUNT(*) FROM yt_videos WHERE status = 'live'").fetchone()[0]
     print(f"[youtube] {matched} videos matched to tournaments, {live} live now")

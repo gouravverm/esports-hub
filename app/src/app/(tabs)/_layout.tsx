@@ -29,6 +29,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ title: 'Esports Hub', tabBarLabel: 'Home', tabBarIcon: icon('home-outline') }} />
       <Tabs.Screen name="tournaments" options={{ title: 'Tournaments', tabBarIcon: icon('trophy-outline') }} />
       <Tabs.Screen name="teams" options={{ title: 'Teams', tabBarIcon: icon('people-outline') }} />
+      <Tabs.Screen name="players" options={{ title: 'Players', tabBarIcon: icon('person-outline') }} />
     </Tabs>
   );
 }

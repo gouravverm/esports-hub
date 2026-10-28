@@ -36,6 +36,7 @@ export default function RootLayout() {
         {/* the tournament's name is the screen's h1, so the bar shows only the back button */}
         <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament', headerTitle: () => null }} />
         <Stack.Screen name="team/[id]" options={{ title: 'Team' }} />
+        <Stack.Screen name="player/[id]" options={{ title: 'Player' }} />
       </Stack>
     </GameProvider>
     </ThemeProvider>

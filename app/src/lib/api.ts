@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-import type { GameKey, Index, Team, TeamSummary, Tournament, TournamentSummary } from './types';
+import type { GameKey, Index, Player, PlayerSummary, Team, TeamSummary, Tournament, TournamentSummary } from './types';
 
 // Where the published JSON lives: EXPO_PUBLIC_DATA_URL (set for production builds in
 // .env.production), else public/api on the web dev server, else the hosted copy for phones.
@@ -26,6 +26,8 @@ export const api = {
   tournament: (id: string | number) => getJson<Tournament>(`t/${id}.json`),
   teams: () => getJson<TeamSummary[]>('teams/index.json'),
   team: (id: string) => getJson<Team>(`teams/${id}.json`),
+  players: () => getJson<PlayerSummary[]>('players/index.json'),
+  player: (id: string) => getJson<Player>(`players/${id}.json`),
 };
 
 /** Load data for a screen; `reload` re-fetches (pull to refresh). */
