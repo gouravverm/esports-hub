@@ -93,9 +93,35 @@ def load_videos(con, summaries):
             "games": [t["game"]] if t else channel_games.get(handle, []),
             "tournament": {"id": t["id"], "name": t["name"]} if t else None,
         })
-    order = {"live": 0, "upcoming": 1, "video": 2}
-    out.sort(key=lambda v: v["at"] or "", reverse=True)
-    out.sort(key=lambda v: order.get(v["status"], 3))
+    out = group_languages(out)
+    # live first; upcoming soonest first; uploads newest first
+    live = sorted((v for v in out if v["status"] == "live"), key=lambda v: v["at"] or "", reverse=True)
+    upcoming = sorted((v for v in out if v["status"] == "upcoming"), key=lambda v: v["at"] or "")
+    uploads = sorted((v for v in out if v["status"] == "video"), key=lambda v: v["at"] or "", reverse=True)
+    return live + upcoming + uploads
+
+
+LANG_TAG = re.compile(r"^\s*\[([^\]]+)\]\s*")
+LANG_ORDER = ["HINDI", "ENGLISH"]  # which broadcast leads a group
+
+
+def group_languages(videos):
+    """The same broadcast in several languages ('[HINDI] BMIC 2026 | Day 3', '[ENGLISH] ...') becomes
+    one entry led by the Hindi (else English) stream, with the others under "languages"."""
+    groups = defaultdict(list)
+    for v in videos:
+        m = LANG_TAG.match(v["title"])
+        base = LANG_TAG.sub("", v["title"]) if m else v["title"]
+        groups[(v["channel"], base, v["status"])].append((m.group(1).upper() if m else None, v))
+    out = []
+    for (_, base, _), items in groups.items():
+        if len(items) == 1 or not all(lang for lang, _ in items):
+            out.extend(v for _, v in items)
+            continue
+        items.sort(key=lambda lv: LANG_ORDER.index(lv[0]) if lv[0] in LANG_ORDER else len(LANG_ORDER))
+        lead_lang, lead = items[0]
+        out.append({**lead, "title": base, "language": lead_lang.title(),
+                    "languages": [{"language": lang.title(), "url": v["url"]} for lang, v in items[1:]]})
     return out
 
 

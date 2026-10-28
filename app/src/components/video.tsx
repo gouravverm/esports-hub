@@ -33,6 +33,21 @@ export function VideoCard({ v, width }: { v: Video; width?: number }) {
             {v.tournament.name}
           </Text>
         ) : null}
+        {v.languages?.length ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.md }}>
+            <Text style={[ui.muted, { color: colors.faint }]}>{v.language}</Text>
+            {v.languages.map((l) => (
+              <Pressable
+                key={l.url}
+                onPress={() => Linking.openURL(l.url)}
+                accessibilityRole="link"
+                hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
+              >
+                <Text style={ui.link}>{l.language}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );

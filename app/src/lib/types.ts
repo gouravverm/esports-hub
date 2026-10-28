@@ -34,6 +34,8 @@ export interface Video {
   url: string;
   games: GameKey[];
   tournament: { id: number; name: string } | null;
+  language?: string; // when the same broadcast exists in several languages
+  languages?: { language: string; url: string }[];
 }
 
 export interface GameIndex {
