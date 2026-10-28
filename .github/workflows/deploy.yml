@@ -51,14 +51,17 @@ jobs:
           gh release download db-seed --pattern esports.db --dir data || echo "no seed, starting empty"
 
       - name: Collect from Liquipedia
+        continue-on-error: true  # a bad run still deploys the last good data
         working-directory: collector
         run: python run.py
 
       - name: Collect player profiles
+        continue-on-error: true  # a bad run still deploys the last good data
         working-directory: collector
         run: python players.py
 
       - name: Collect YouTube streams and videos
+        continue-on-error: true  # a bad run still deploys the last good data
         working-directory: collector
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}

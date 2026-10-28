@@ -3,6 +3,7 @@ custom User-Agent, gzip, one shared connection, and a request rate limit."""
 import gzip
 import json
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -28,10 +29,20 @@ class Liquipedia:
             req = urllib.request.Request(self.url, data=encoded.encode(), headers=headers)
         else:
             req = urllib.request.Request(self.url + "?" + encoded, headers=headers)
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = resp.read()
-            if resp.headers.get("Content-Encoding") == "gzip":
-                body = gzip.decompress(body)
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    body = resp.read()
+                    if resp.headers.get("Content-Encoding") == "gzip":
+                        body = gzip.decompress(body)
+                break
+            except urllib.error.HTTPError as e:
+                # rate limited (429) or briefly unavailable: wait as told, then try again
+                if e.code not in (429, 503) or attempt == 3:
+                    raise
+                pause = int(e.headers.get("Retry-After") or 0) or 60 * (attempt + 1)
+                print(f"Liquipedia said {e.code}; waiting {pause}s before retrying")
+                time.sleep(pause)
         self._last = time.time()
         data = json.loads(body)
         if "error" in data:
