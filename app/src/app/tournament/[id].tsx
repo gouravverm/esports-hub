@@ -54,7 +54,7 @@ export default function TournamentScreen() {
   const current = tab && tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key;
 
   return (
-    <Screen>
+    <Screen game={data.game}>
       <ScrollView>
         <Header t={data} lead={lead} />
         {tabs.length ? <Pills items={tabs} value={current!} onChange={setTab} /> : null}

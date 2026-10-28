@@ -4,9 +4,9 @@
 // never on tabs or buttons; violet is the brand mark only (icon, wordmark).
 
 export const colors = {
-  bg: '#000000',
-  card: '#111111', // surface
-  cardAlt: '#2A2A2A', // nested panel, pressed state, inputs
+  bg: '#0A0D12', // deep charcoal under the map-style background art
+  card: 'rgba(20, 23, 29, 0.88)', // "dark glass": the artwork shows faintly through
+  cardAlt: '#2A2E36', // nested panel, pressed state, inputs
   border: '#1A1A1A', // structural 1px lines (tab rule)
   rule: '#1F1F1F', // table row rules
   text: '#FFFFFF',

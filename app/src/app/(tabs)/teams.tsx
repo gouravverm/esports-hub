@@ -76,7 +76,6 @@ export default function Teams() {
         ListEmptyComponent={
           loading ? <Loading /> : error ? <ErrorView message={error} onRetry={reload} /> : <Empty text="Koi team nahi mili" />
         }
-        style={{ backgroundColor: colors.bg }}
       />
     </Screen>
   );

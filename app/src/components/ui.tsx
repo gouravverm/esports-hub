@@ -3,14 +3,21 @@ import { Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
-import { LivePulse, TeamCrest } from '@/components/graphics';
+import { GameBackground, LivePulse, TeamCrest } from '@/components/graphics';
 import { date, dateRange, money } from '@/lib/format';
 import { GAMES, gameLabel, useGame } from '@/lib/game';
 import { colors, fonts, gameColors, radius, space, touch, type } from '@/lib/theme';
 import type { GameKey, SquadMember, TournamentSummary } from '@/lib/types';
 
-export function Screen({ children }: { children: ReactNode }) {
-  return <View style={styles.screen}>{children}</View>;
+/** Every screen sits on the game's map-style artwork; pages about one game pass it in. */
+export function Screen({ children, game }: { children: ReactNode; game?: GameKey }) {
+  const selected = useGame().game;
+  return (
+    <View style={styles.screen}>
+      <GameBackground game={game ?? selected} />
+      {children}
+    </View>
+  );
 }
 
 export function Loading() {

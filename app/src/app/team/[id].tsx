@@ -53,7 +53,7 @@ export default function TeamScreen() {
   const rows = data.history.filter((h) => (filter === 'titles' ? h.place === 1 : filter === 'podiums' ? h.place <= 3 : true));
 
   return (
-    <Screen>
+    <Screen game={data.game}>
       <Stack.Screen options={{ title: data.name }} />
       <ScrollView>
         <Card style={{ marginTop: space.lg }}>

@@ -109,10 +109,63 @@ export function TournamentBanner({ ticker, game, cover, height = 150 }: { ticker
         <Rect x="0" y="0" width="6" height="100%" fill={hue} />
       </Svg>
       <View style={s.bannerText}>
-        <Text style={[s.ticker, { color: '#FFFFFF', textShadowColor: hue }]} numberOfLines={1} adjustsFontSizeToFit>
+        {/* size by length (web has no auto-fit): short tickers big, long names on up to two lines */}
+        <Text
+          style={[s.ticker, { color: '#FFFFFF', textShadowColor: hue, fontSize: ticker.length <= 7 ? 44 : ticker.length <= 12 ? 34 : 26 }]}
+          numberOfLines={2}
+        >
           {ticker}
         </Text>
       </View>
+    </View>
+  );
+}
+
+// ---------- screen background ----------
+
+/** Wavy topographic line across the 400-wide artboard (deterministic, so it never jumps). */
+function contour(base: number, seed: number): string {
+  const pts: string[] = [];
+  for (let x = -20; x <= 420; x += 20) {
+    const y = base + 14 * Math.sin(x / 47 + seed) + 8 * Math.sin(x / 19 + seed * 2.3) + 5 * Math.sin(x / 9 + seed * 0.7);
+    pts.push(`${x === -20 ? 'M' : 'L'}${x} ${y.toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+
+const CONTOURS = Array.from({ length: 22 }, (_, i) => ({ d: contour(30 + i * 42, i * 1.7), strong: i % 4 === 0 }));
+
+/** Map-style key art behind every screen: a battle-royale map grid, terrain contours and a glow
+ *  in the game's colour, all faint enough that text on the glass cards stays easy to read. */
+export function GameBackground({ game }: { game: GameKey }) {
+  const { hue } = gameColors[game];
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" aria-hidden>
+      <Svg width="100%" height="100%" viewBox="0 0 400 960" preserveAspectRatio="xMidYMin slice">
+        <Defs>
+          <LinearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={hue} stopOpacity="0.28" />
+            <Stop offset="0.35" stopColor={hue} stopOpacity="0.08" />
+            <Stop offset="1" stopColor="#000000" stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+        <Rect width="400" height="960" fill="url(#sky)" />
+        {/* map grid, like the squares on an in-game map */}
+        <G stroke="#FFFFFF" strokeOpacity="0.05" strokeWidth="1">
+          {Array.from({ length: 9 }, (_, i) => (
+            <Line key={`v${i}`} x1={i * 50} y1="0" x2={i * 50} y2="960" />
+          ))}
+          {Array.from({ length: 20 }, (_, i) => (
+            <Line key={`h${i}`} x1="0" y1={i * 50} x2="400" y2={i * 50} />
+          ))}
+        </G>
+        {/* terrain contours */}
+        <G fill="none">
+          {CONTOURS.map((c, i) => (
+            <Path key={i} d={c.d} stroke={hue} strokeOpacity={c.strong ? 0.24 : 0.11} strokeWidth={c.strong ? 1.6 : 1} />
+          ))}
+        </G>
+      </Svg>
     </View>
   );
 }

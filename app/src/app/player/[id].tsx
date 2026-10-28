@@ -39,7 +39,7 @@ export default function PlayerScreen() {
   ];
 
   return (
-    <Screen>
+    <Screen game={p.game}>
       <Stack.Screen options={{ title: p.tag }} />
       <ScrollView>
         <Card style={{ marginTop: space.lg }}>
