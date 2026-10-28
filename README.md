@@ -57,9 +57,19 @@ cd app && npm run web                                 # browser me test
 Phone pe chalane ke liye JSON folder kahin host karna hoga (GitHub Pages / Cloudflare Pages, free)
 aur `EXPO_PUBLIC_DATA_URL` me uska URL dena hoga.
 
+## Hosting (free) aur automatic update
+
+- **Live app:** https://gouravverm.github.io/esports-hub/ (phone ke browser me bhi khulta hai)
+- **Data (JSON):** https://gouravverm.github.io/esports-hub/api/index.json
+- **Automatic:** `.github/workflows/deploy.yml` har 30 minute (aur har push pe) collector chalata hai,
+  web app build karta hai aur GitHub Pages pe daal deta hai. Database runs ke beech Actions cache me
+  rehta hai; cache khaali ho to `db-seed` release se shuru hota hai.
+- **Haath se chalana:** GitHub repo → Actions → "Collect and deploy" → Run workflow.
+- **Dhyan:** GitHub public repo me 60 din tak koi commit na ho to scheduled workflows band kar deta hai;
+  tab Actions tab me "Enable workflow" dabana hoga (ya ek commit kar dena).
+
 ## Aage kya banana hai
 
-1. Data free hosting pe + collector ko automatic chalana (GitHub Actions, live event me har 15 min)
-2. YouTube channels se live streams aur videos (YouTube Data API, free key)
+1. YouTube channels se live streams aur videos (YouTube Data API, free key)
 3. Team logos, player pages, push notifications
 4. Ads (AdMob) + premium, phir Play Store / App Store build (EAS)
