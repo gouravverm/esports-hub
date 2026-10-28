@@ -29,8 +29,22 @@ CREATE TABLE IF NOT EXISTS tournaments (
     start_date TEXT, end_date TEXT, status TEXT,
     team_count INTEGER, youtube TEXT,
     source_url TEXT, revid INTEGER, updated_at TEXT,
+    ticker TEXT, abbreviation TEXT,
     UNIQUE (wiki, page)
 );
+
+-- YouTube (official Data API v3): channels we follow and their recent uploads / streams
+CREATE TABLE IF NOT EXISTS yt_channels (
+    handle TEXT PRIMARY KEY, channel_id TEXT, title TEXT, thumb TEXT, uploads TEXT, resolved_at TEXT
+);
+CREATE TABLE IF NOT EXISTS yt_videos (
+    video_id TEXT PRIMARY KEY, handle TEXT, title TEXT, published_at TEXT, thumb TEXT,
+    status TEXT,                -- live | upcoming | video
+    scheduled_start TEXT, actual_start TEXT, actual_end TEXT, duration TEXT,
+    tournament_id INTEGER REFERENCES tournaments(id) ON DELETE SET NULL,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_yt_tournament ON yt_videos(tournament_id);
 CREATE TABLE IF NOT EXISTS placements (
     tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
     place INTEGER, team TEXT, prize REAL
@@ -114,9 +128,14 @@ def connect():
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(config.DB_PATH)
     con.execute("PRAGMA foreign_keys = ON")
+    # databases made before these columns existed
     cols = [r[1] for r in con.execute("PRAGMA table_info(stage_totals)")]
-    if cols and "wwcd" not in cols:  # databases made before the wwcd column
+    if cols and "wwcd" not in cols:
         con.execute("ALTER TABLE stage_totals ADD COLUMN wwcd INTEGER")
+    cols = [r[1] for r in con.execute("PRAGMA table_info(tournaments)")]
+    for col in ("ticker", "abbreviation"):
+        if cols and col not in cols:
+            con.execute(f"ALTER TABLE tournaments ADD COLUMN {col} TEXT")
     con.executescript(SCHEMA)
     return con
 
@@ -155,7 +174,7 @@ def save_tournament(con, game, wiki, page, revid, parsed):
     info = parsed["info"]
     url = f"https://liquipedia.net/{wiki}/{page.replace(' ', '_')}"
     cols = ["name", "tier", "type", "organizer", "series", "country", "city", "mode", "perspective",
-            "prize_pool", "currency", "start_date", "end_date", "team_count", "youtube"]
+            "prize_pool", "currency", "start_date", "end_date", "team_count", "youtube", "ticker", "abbreviation"]
     values = [info[c] for c in cols]
     con.execute(
         f"""INSERT INTO tournaments (game, wiki, page, {", ".join(cols)}, status, source_url, revid, updated_at)

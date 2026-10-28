@@ -26,3 +26,16 @@ GAMES = {
     "bgmi": {"wiki": "pubgmobile", "category": "Category:Indian Tournaments"},
     "freefire": {"wiki": "freefire", "category": "Category:Indian Tournaments"},
 }
+
+# YouTube channels that stream and post the tournaments (official YouTube Data API v3).
+# "games" limits which tournaments a channel's videos can be matched to.
+YOUTUBE_API_KEY_ENV = "YOUTUBE_API_KEY"  # a GitHub Actions secret; never stored in the repo
+YOUTUBE_CHANNELS = [
+    {"handle": "@kraftonindiaesports", "games": ["BGMI"]},
+    {"handle": "@PUBGMOBILEEsports", "games": ["PUBG Mobile", "BGMI"]},
+    {"handle": "@skyesportsgaming", "games": ["BGMI", "Free Fire", "PUBG Mobile"]},
+    {"handle": "@FFIEsports", "games": ["Free Fire"]},
+    {"handle": "@freefireesportsofficial", "games": ["Free Fire"]},
+    {"handle": "@VillagerEsports", "games": ["BGMI", "Free Fire"]},
+]
+YOUTUBE_RECENT_PER_CHANNEL = 25  # latest uploads checked per run (1 quota unit per channel)

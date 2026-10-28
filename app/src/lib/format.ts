@@ -41,6 +41,16 @@ function trim(n: number): string {
   return n.toFixed(2).replace(/\.?0+$/, '');
 }
 
+/** ISO time -> '5 min ago', '3 h ago', '2 days ago', or 'in 2 h' for the future. */
+export function ago(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  const future = mins < 0;
+  const m = Math.abs(mins);
+  const text = m < 60 ? `${m} min` : m < 60 * 24 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;
+  return future ? `in ${text}` : `${text} ago`;
+}
+
 export function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;

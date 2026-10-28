@@ -20,12 +20,13 @@ import {
   Winner,
   styles as ui,
 } from '@/components/ui';
+import { VideoCard } from '@/components/video';
 import { api, useData } from '@/lib/api';
 import { dateRange, dateTime, money, ordinal } from '@/lib/format';
 import { colors, fonts, gameColors, placeColor, space, type } from '@/lib/theme';
 import type { GameKey, Stage, TeamRef, Tournament } from '@/lib/types';
 
-type Tab = 'table' | 'matches' | 'results' | 'squads';
+type Tab = 'table' | 'matches' | 'results' | 'squads' | 'videos';
 
 const WIDE = 900; // table and Finish-vs-Fight side by side from here
 
@@ -44,6 +45,7 @@ export default function TournamentScreen() {
     ...(stages.some((s) => s.matches.length) ? [{ key: 'matches' as Tab, label: 'Matches' }] : []),
     ...(data.placements.length ? [{ key: 'results' as Tab, label: 'Final results' }] : []),
     ...(data.squads.length ? [{ key: 'squads' as Tab, label: 'Squads' }] : []),
+    ...(data.videos?.length ? [{ key: 'videos' as Tab, label: 'Videos' }] : []),
   ];
   const current = tab && tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key;
 
@@ -56,6 +58,13 @@ export default function TournamentScreen() {
         {current === 'matches' && <StagesView stages={stages.filter((s) => s.matches.length)} game={data.game} mode="matches" />}
         {current === 'results' && <ResultsView t={data} />}
         {current === 'squads' && <SquadsView t={data} />}
+        {current === 'videos' && (
+          <View style={{ gap: space.md, paddingHorizontal: space.lg }}>
+            {data.videos!.map((v) => (
+              <VideoCard key={v.id} v={v} />
+            ))}
+          </View>
+        )}
         {!tabs.length && <Empty text="Is tournament ka detailed data abhi available nahi hai" />}
         <SourceNote />
       </ScrollView>

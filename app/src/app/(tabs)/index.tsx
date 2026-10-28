@@ -12,6 +12,7 @@ import {
   TournamentCard,
   styles,
 } from '@/components/ui';
+import { VideoRow } from '@/components/video';
 import { api, useData } from '@/lib/api';
 import { useGame } from '@/lib/game';
 import { colors } from '@/lib/theme';
@@ -29,6 +30,13 @@ export default function Home() {
     <Screen>
       <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.link} />}>
         <GameSwitcher />
+
+        {g.streams?.length ? (
+          <>
+            <SectionTitle>Streams</SectionTitle>
+            <VideoRow videos={g.streams} />
+          </>
+        ) : null}
 
         <SectionTitle>Live now</SectionTitle>
         {g.live.length ? g.live.map((t) => <TournamentCard key={t.id} t={t} />) : <Empty text="Abhi koi tournament live nahi hai" />}
@@ -52,6 +60,13 @@ export default function Home() {
         {g.recent.map((t) => (
           <TournamentCard key={t.id} t={t} />
         ))}
+
+        {g.videos?.length ? (
+          <>
+            <SectionTitle>Latest videos</SectionTitle>
+            <VideoRow videos={g.videos} />
+          </>
+        ) : null}
 
         <Text style={[styles.muted, { textAlign: 'center', marginTop: 8 }]}>
           {g.count} tournaments · updated {data.updated.slice(0, 10)}

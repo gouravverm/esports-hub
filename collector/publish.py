@@ -5,7 +5,7 @@ No server needed: the folder can be hosted free (GitHub Pages, Cloudflare Pages)
     python publish.py --out some/dir
 
 Files:
-    index.json              live / upcoming / recent tournaments per game
+    index.json              live / upcoming / recent tournaments and streams / videos per game
     tournaments/<game>.json every tournament of a game (summary)
     t/<id>.json             one tournament: info, standings, points tables, matches, squads
     teams/index.json        all teams (for search)
@@ -76,6 +76,29 @@ def finish_vs_fight(con, names, wiki, st):
     return out
 
 
+def load_videos(con, summaries):
+    """Followed channels' recent videos, newest first: live first, then upcoming, then uploads."""
+    channel_games = {c["handle"]: [GAMES[g] for g in c["games"]] for c in config.YOUTUBE_CHANNELS}
+    out = []
+    for vid, handle, title, thumb, status, published, scheduled, started, tid, channel in con.execute("""
+            SELECT v.video_id, v.handle, v.title, v.thumb, v.status, v.published_at, v.scheduled_start,
+                   v.actual_start, v.tournament_id, c.title
+            FROM yt_videos v LEFT JOIN yt_channels c ON c.handle = v.handle"""):
+        t = summaries.get(tid)
+        out.append({
+            "id": vid, "title": title, "thumb": thumb, "status": status, "channel": channel,
+            "at": started or scheduled or published,
+            "url": f"https://www.youtube.com/watch?v={vid}",
+            # a matched video belongs to its tournament's game; otherwise to every game the channel covers
+            "games": [t["game"]] if t else channel_games.get(handle, []),
+            "tournament": {"id": t["id"], "name": t["name"]} if t else None,
+        })
+    order = {"live": 0, "upcoming": 1, "video": 2}
+    out.sort(key=lambda v: v["at"] or "", reverse=True)
+    out.sort(key=lambda v: order.get(v["status"], 3))
+    return out
+
+
 def summary(row):
     return {
         "id": row["id"], "game": GAMES[row["game"]], "name": row["name"], "tier": row["tier"],
@@ -103,19 +126,29 @@ def build(con, out):
     for _, s in tours:
         s["winner"] = winners.get(s["id"])
 
+    videos = load_videos(con, {s["id"]: s for _, s in tours})
+
     # index + per-game lists
     index = {"updated": db.now(), "source": "Liquipedia (CC-BY-SA 3.0)", "games": {}}
     for label, key in GAMES.items():
         mine = [s for r, s in tours if r["game"] == label]
         write(out, f"tournaments/{key}.json", mine)
+        game_videos = [v for v in videos if key in v["games"]]
         index["games"][key] = {
             "label": label,
             "count": len(mine),
             "live": [s for s in mine if s["status"] == "ongoing"],
             "upcoming": sorted([s for s in mine if s["status"] == "upcoming"], key=lambda s: s["start"] or "")[:RECENT],
             "recent": [s for s in mine if s["status"] == "finished"][:RECENT],
+            # streams on air or about to start, then the newest uploads
+            "streams": [v for v in game_videos if v["status"] in ("live", "upcoming")][:RECENT],
+            "videos": [v for v in game_videos if v["status"] == "video"][:RECENT],
         }
     write(out, "index.json", index)
+    by_tournament = defaultdict(list)
+    for v in videos:
+        if v["tournament"]:
+            by_tournament[v["tournament"]["id"]].append(v)
 
     # team history collected while writing tournaments
     history = defaultdict(list)
@@ -173,7 +206,8 @@ def build(con, out):
         write(out, f"t/{tid}.json", {**s, "series": r["series"], "mode": r["mode"],
                                      "perspective": r["perspective"], "teams": r["team_count"],
                                      "source": r["source_url"], "placements": placements,
-                                     "stages": stages, "squads": squad_list})
+                                     "stages": stages, "squads": squad_list,
+                                     "videos": by_tournament.get(tid, [])[:20]})
 
     team_index = []
     for tid_, (game, name) in team_game.items():

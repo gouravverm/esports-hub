@@ -24,12 +24,26 @@ export interface TournamentSummary {
   winner: string | null;
 }
 
+export interface Video {
+  id: string;
+  title: string;
+  thumb: string | null;
+  status: 'live' | 'upcoming' | 'video';
+  channel: string | null;
+  at: string | null; // ISO time: started, scheduled or published
+  url: string;
+  games: GameKey[];
+  tournament: { id: number; name: string } | null;
+}
+
 export interface GameIndex {
   label: string;
   count: number;
   live: TournamentSummary[];
   upcoming: TournamentSummary[];
   recent: TournamentSummary[];
+  streams?: Video[]; // live or about to start
+  videos?: Video[]; // newest uploads
 }
 
 export interface Index {
@@ -81,6 +95,7 @@ export interface Tournament extends TournamentSummary {
   placements: { place: number; team: TeamRef; prize: number | null }[];
   stages: Stage[];
   squads: { team: TeamRef; players: { player: string; role: string }[] }[];
+  videos?: Video[];
 }
 
 export interface TeamSummary {

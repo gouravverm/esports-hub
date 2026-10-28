@@ -73,6 +73,8 @@ def parse_tournament(wikitext):
         "end_date": _param(box, "edate") or _param(box, "date"),
         "team_count": _number(_param(box, "team_number")),
         "youtube": _param(box, "youtube"),
+        "ticker": _param(box, "tickername"),  # short name used in stream titles, e.g. "BGMS S2"
+        "abbreviation": _param(box, "abbreviation"),
     }
 
     # Final standings come from the prize pool table, one Slot per place;
