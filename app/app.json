@@ -41,6 +41,17 @@
     "experiments": {
       "typedRoutes": true,
       "baseUrl": "/esports-hub"
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "cc1024a5-cf92-4f1b-9ca2-d905c9266704"
+      }
+    },
+    "owner": "gourav_1"
   }
 }

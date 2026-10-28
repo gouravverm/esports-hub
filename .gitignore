@@ -13,3 +13,4 @@ app/.expo/
 __pycache__/
 *.pyc
 github-login.ps1
+expo-login.ps1
