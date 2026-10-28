@@ -1,0 +1,15 @@
+# generated data (rebuilt by the collector; the database lives in the Actions cache / db-seed release)
+data/
+app/public/api/
+site/
+
+# app build output and dependencies
+app/node_modules/
+app/dist/
+app/.expo/
+
+# local tooling
+.taste-skill/
+__pycache__/
+*.pyc
+github-login.ps1

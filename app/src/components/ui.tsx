@@ -1,0 +1,212 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Link } from 'expo-router';
+import type { ReactNode } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
+
+import { dateRange, initials, money } from '@/lib/format';
+import { GAMES, gameLabel, useGame } from '@/lib/game';
+import { colors, fonts, gameColors, radius, space, touch, type } from '@/lib/theme';
+import type { GameKey, TournamentSummary } from '@/lib/types';
+
+export function Screen({ children }: { children: ReactNode }) {
+  return <View style={styles.screen}>{children}</View>;
+}
+
+export function Loading() {
+  return (
+    <View style={styles.center}>
+      <ActivityIndicator color={colors.link} />
+    </View>
+  );
+}
+
+export function ErrorView({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <View style={styles.center}>
+      <Text style={styles.muted}>Data load nahi hua: {message}</Text>
+      {onRetry && (
+        <Pressable onPress={onRetry} style={styles.retry}>
+          <Text style={styles.retryText}>Dobara try karein</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+export function Empty({ text }: { text: string }) {
+  return <Text style={[styles.muted, { padding: space.lg, textAlign: 'center' }]}>{text}</Text>;
+}
+
+export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
+  return (
+    <View style={styles.sectionRow}>
+      <Text style={styles.section}>{children}</Text>
+      {right}
+    </View>
+  );
+}
+
+export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  return <View style={[styles.card, style]}>{children}</View>;
+}
+
+/** Underline tabs on a full-width 1px rule. The selection is brightness plus a 2px white
+ *  line, never a colour fill. The row scrolls sideways inside itself with end padding. */
+export function Pills<T extends string | number>({
+  items,
+  value,
+  onChange,
+  small,
+}: {
+  items: { key: T; label: string }[];
+  value: T;
+  onChange: (key: T) => void;
+  small?: boolean;
+}) {
+  // phones scroll the row sideways inside itself; wider screens have room, so the tabs wrap
+  const { width } = useWindowDimensions();
+  const Row = width >= 600 ? WrapRow : ScrollRow;
+  return (
+    <View style={styles.tabsWrap}>
+      <Row>
+        {items.map((it) => {
+          const on = it.key === value;
+          return (
+            <Pressable
+              key={String(it.key)}
+              onPress={() => onChange(it.key)}
+              style={({ pressed }) => [styles.tab, small && styles.tabSmall, on && styles.tabOn, pressed && { opacity: 0.7 }]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+            >
+              <Text style={[styles.tabText, small && { fontSize: 13 }, on && styles.tabTextOn]} numberOfLines={1}>
+                {it.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </Row>
+    </View>
+  );
+}
+
+function ScrollRow({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+      {children}
+    </ScrollView>
+  );
+}
+
+function WrapRow({ children }: { children: ReactNode }) {
+  return <View style={[styles.tabs, { flexWrap: 'wrap', columnGap: space.xl, rowGap: 0 }]}>{children}</View>;
+}
+
+export function GameSwitcher() {
+  const { game, setGame } = useGame();
+  return <Pills items={GAMES.map((g) => ({ key: g.key, label: g.label }))} value={game} onChange={setGame} />;
+}
+
+export function Badge({ text, color = colors.muted }: { text: string; color?: string }) {
+  return (
+    <View style={[styles.badge, { borderColor: color }]}>
+      <Text style={[styles.badgeText, { color }]}>{text}</Text>
+    </View>
+  );
+}
+
+export function LiveDot() {
+  return (
+    <View style={styles.liveWrap}>
+      <View style={styles.liveDot} />
+      <Text style={styles.liveText}>LIVE</Text>
+    </View>
+  );
+}
+
+export function TeamAvatar({ name, size = 32 }: { name: string; size?: number }) {
+  return (
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Text style={[styles.avatarText, { fontSize: Math.max(11, size * 0.38) }]}>{initials(name)}</Text>
+    </View>
+  );
+}
+
+export function Winner({ name, prefix }: { name: string; prefix?: string }) {
+  return (
+    <View style={styles.winnerRow}>
+      <Ionicons name="trophy" size={14} color={colors.gold} accessibilityElementsHidden importantForAccessibility="no" />
+      <Text style={styles.winner} numberOfLines={1}>
+        {prefix}
+        {name}
+      </Text>
+    </View>
+  );
+}
+
+export function GameBadge({ game }: { game: GameKey }) {
+  return <Badge text={gameLabel(game)} color={gameColors[game].hue} />;
+}
+
+export function TournamentCard({ t }: { t: TournamentSummary }) {
+  return (
+    <Link href={{ pathname: '/tournament/[id]', params: { id: String(t.id) } }} asChild>
+      <Pressable style={styles.card} android_ripple={{ color: colors.cardAlt }}>
+        <View style={styles.cardTop}>
+          {t.status === 'ongoing' ? <LiveDot /> : null}
+          {t.tier ? <Badge text={t.tier} color={t.tier === 'S-Tier' ? colors.gold : colors.muted} /> : null}
+          {t.type ? <Badge text={t.type} /> : null}
+        </View>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {t.name}
+        </Text>
+        <Text style={styles.muted} numberOfLines={1}>
+          {[dateRange(t.start, t.end), t.organizer, t.city].filter(Boolean).join(' · ')}
+        </Text>
+        <View style={styles.cardBottom}>
+          {t.prize ? <Text style={styles.prize}>{money(t.prize, t.currency)}</Text> : <View />}
+          {t.winner ? <Winner name={t.winner} /> : null}
+        </View>
+      </Pressable>
+    </Link>
+  );
+}
+
+export function SourceNote() {
+  return <Text style={styles.source}>Data: Liquipedia (CC-BY-SA 3.0)</Text>;
+}
+
+export const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, backgroundColor: colors.bg },
+  muted: { ...type.caption, color: colors.muted, fontSize: 13 },
+  text: { ...type.body, color: colors.text },
+  retry: { marginTop: space.md, paddingHorizontal: space.lg, minHeight: touch.min, justifyContent: 'center', borderRadius: 22, backgroundColor: colors.primary },
+  retryText: { fontFamily: fonts.bodyBold, color: colors.onPrimary },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.xl, marginBottom: space.sm, paddingHorizontal: space.lg },
+  section: { ...type.heading, color: colors.text },
+  card: { backgroundColor: colors.card, borderRadius: radius, padding: space.lg, marginHorizontal: space.lg, marginBottom: space.md },
+  cardTop: { flexDirection: 'row', gap: space.sm, marginBottom: space.sm, flexWrap: 'wrap', alignItems: 'center' },
+  cardTitle: { ...type.heading, fontSize: 16, color: colors.text, marginBottom: space.xs },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md, gap: space.sm },
+  prize: { fontFamily: fonts.bodyBold, color: colors.good, fontSize: 14 },
+  winner: { fontFamily: fonts.bodyBold, color: colors.gold, fontSize: 13, flexShrink: 1, textAlign: 'right' },
+  winnerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  tabsWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: space.md },
+  tabs: { flexDirection: 'row', gap: space.xl, paddingHorizontal: space.lg },
+  tab: { minHeight: touch.min, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
+  tabSmall: { minHeight: 40 },
+  tabOn: { borderBottomColor: colors.text },
+  tabText: { fontFamily: fonts.bodyBold, color: colors.faint, fontSize: 14 },
+  tabTextOn: { color: colors.text },
+  badge: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  badgeText: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.3 },
+  liveWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(244,63,94,0.15)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.live },
+  liveText: { fontFamily: fonts.bodyBold, color: colors.live, fontSize: 11, letterSpacing: 0.5 },
+  avatar: { backgroundColor: colors.cardAlt, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontFamily: fonts.display, color: colors.text },
+  link: { fontFamily: fonts.bodyBold, color: colors.link },
+  input: { ...type.body, marginHorizontal: space.lg, marginBottom: space.md, minHeight: touch.min, backgroundColor: colors.card, color: colors.text, borderRadius: 10, paddingHorizontal: space.md, borderWidth: 1, borderColor: '#444444' },
+  source: { ...type.caption, color: colors.muted, fontSize: 11, textAlign: 'center', paddingVertical: space.xl },
+});

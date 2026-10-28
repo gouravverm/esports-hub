@@ -1,0 +1,97 @@
+# Every 30 minutes: update the Liquipedia data, build the web app, publish both to GitHub Pages.
+# The database (page cache + parsed data) is kept between runs in the Actions cache, so each run
+# only downloads pages that changed. The very first run starts from the "db-seed" release.
+name: Collect and deploy
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: collect-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install collector dependency
+        run: pip install mwparserfromhell==0.7.2
+
+      - name: Restore database
+        uses: actions/cache/restore@v4
+        with:
+          path: data/esports.db
+          key: esports-db-${{ github.run_id }}
+          restore-keys: esports-db-
+
+      - name: Seed database on the first run
+        if: hashFiles('data/esports.db') == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          gh release download db-seed --pattern esports.db --dir data || echo "no seed, starting empty"
+
+      - name: Collect from Liquipedia
+        working-directory: collector
+        run: python run.py
+
+      - name: Save database
+        if: always() && hashFiles('data/esports.db') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: data/esports.db
+          key: esports-db-${{ github.run_id }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install app
+        working-directory: app
+        run: npm ci
+
+      - name: Build web app
+        working-directory: app
+        run: npx expo export --platform web --output-dir ../site
+
+      - name: Publish data
+        working-directory: collector
+        run: python publish.py --out ../site/api
+
+      - name: Single-page app fallback
+        run: |
+          cp site/index.html site/404.html
+          touch site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
