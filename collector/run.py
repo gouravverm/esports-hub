@@ -98,6 +98,12 @@ def collect(con, key, reparse=False):
     wiki, category = config.GAMES[key]["wiki"], config.GAMES[key]["category"]
     api = Liquipedia(wiki)
 
+    # parser changed since this database was built: re-read the cached pages once (no downloads)
+    if db.get_meta(con, f"parser_version:{wiki}") != str(config.PARSER_VERSION):
+        reprocess_offline(con, key)
+        db.set_meta(con, f"parser_version:{wiki}", str(config.PARSER_VERSION))
+        con.commit()
+
     cat = api.category_pages(category)
     cat_set = set(cat)
     refresh_title_index(con, api, wiki)

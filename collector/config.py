@@ -16,6 +16,10 @@ MIN_SECONDS_BETWEEN_HEAVY_REQUESTS = 31
 FULL_TITLE_REFRESH_DAYS = 7
 TEAM_BATCH = 150  # team names expanded per expandtemplates call
 
+# Bump when parse.py changes what it extracts: the next run re-reads every cached page once.
+# 3 = match schedules before results + player statistics tables
+PARSER_VERSION = 3
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "esports.db"
