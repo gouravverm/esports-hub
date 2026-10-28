@@ -7,13 +7,15 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0F17",
+    "backgroundColor": "#0A0D12",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gouravverm.esportshub"
     },
     "android": {
+      "package": "com.gouravverm.esportshub",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0F17",
+        "backgroundColor": "#0A0D12",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -25,7 +27,16 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#0A0D12"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
