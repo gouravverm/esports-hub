@@ -2,6 +2,7 @@ import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Badge, Card, ErrorView, GameBadge, Loading, Screen, SectionTitle, SourceNote, TeamAvatar, styles as ui } from '@/components/ui';
+import { cell } from '@/components/playerStats';
 import { api, useData } from '@/lib/api';
 import { age, date, money, ordinal } from '@/lib/format';
 import { colors, placeColor, space, type } from '@/lib/theme';
@@ -86,6 +87,44 @@ export default function PlayerScreen() {
           ) : null}
         </Card>
 
+        {p.statTotals || p.stats?.length ? (
+          <>
+            <SectionTitle>In-game stats</SectionTitle>
+            <Card>
+              {p.statTotals ? (
+                <View style={{ flexDirection: 'row', marginBottom: space.md }}>
+                  {[
+                    ['Kills', p.statTotals.kills],
+                    ['Matches', p.statTotals.matches],
+                    ['Kills / match', p.statTotals.perMatch ?? '–'],
+                  ].map(([k, v]) => (
+                    <View key={String(k)} style={{ flex: 1 }}>
+                      <Text style={[type.heading, { color: colors.text }]}>{v}</Text>
+                      <Text style={[ui.muted, { color: colors.faint }]}>{k}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              {p.stats?.map((st, i) => (
+                <View key={`${st.tournament.id}-${i}`} style={[{ paddingVertical: space.sm }, i > 0 && st_.ruled]}>
+                  <Link href={{ pathname: '/tournament/[id]', params: { id: String(st.tournament.id) } }} style={[ui.text, { fontFamily: 'ChakraPetch_700Bold' }]} numberOfLines={1}>
+                    {st.tournament.name}
+                  </Link>
+                  <Text style={[ui.muted, { color: colors.faint }]}>{st.title.replace(/ Finish Rankings$/, '')}</Text>
+                  <Text style={[ui.muted, { marginTop: 2 }]}>
+                    {st.columns.map((c, j) => `${c} ${cell(c, st.values[j])}`).join(' · ')}
+                  </Text>
+                </View>
+              ))}
+              {p.statTotals ? (
+                <Text style={[ui.muted, { color: colors.faint, marginTop: space.sm }]}>
+                  Totals from {p.statTotals.tournaments} tournaments that publish player stats (one table each).
+                </Text>
+              ) : null}
+            </Card>
+          </>
+        ) : null}
+
         <SectionTitle>Team history</SectionTitle>
         <Card style={{ paddingVertical: space.sm }}>
           {p.timeline.map((s, i) => (
@@ -127,6 +166,8 @@ export default function PlayerScreen() {
     </Screen>
   );
 }
+
+const st_ = StyleSheet.create({ ruled: { borderTopWidth: 1, borderTopColor: colors.rule } });
 
 const st = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 52 },

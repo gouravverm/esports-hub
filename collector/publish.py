@@ -184,6 +184,7 @@ def build(con, out):
     aliases = {(w, a): p for w, a, p in con.execute("SELECT wiki, alias, page FROM player_alias")}
     careers = defaultdict(list)
     player_meta = {}
+    player_stats_of = defaultdict(list)
 
     def player_id(wiki, alias):
         return team_id(wiki, aliases.get((wiki, alias)) or alias)
@@ -226,7 +227,8 @@ def build(con, out):
                 "killPoints": st["kill_points"],
                 "placementPoints": json.loads(st["placement_points"]) if st["placement_points"] else None,
                 "standings": standings,
-                "matches": [m for _, m in sorted(matches.items()) if m["results"]],
+                # scheduled matches without results are kept so the app can show the schedule
+                "matches": [m for _, m in sorted(matches.items()) if m.get("no") is not None],
             })
 
         squad = defaultdict(list)
@@ -244,10 +246,24 @@ def build(con, out):
             squads.setdefault(t["id"], {"tournament": s["name"], "players": squad[t["id"]]})
         squad_list = [{"team": {"id": k, "name": team_game[k][1]}, "players": v} for k, v in squad.items()]
 
+        # per-player statistics tables (finishes, knocks, FPM ...), also kept for each player's page
+        stat_tables = {}
+        for no, title, cols, player, page, team, vals in con.execute(
+                "SELECT table_no, title, columns, player, COALESCE(page, player), team, stat_values "
+                "FROM player_stats WHERE tournament_id = ? ORDER BY source_page, table_no, rowid", (tid,)):
+            key = (title, cols)
+            tbl = stat_tables.setdefault(key, {"title": title, "columns": json.loads(cols), "rows": []})
+            pid = player_id(wiki, page)
+            values = json.loads(vals)
+            tbl["rows"].append({"player": {"id": pid, "name": player}, "team": teams.get(wiki, team), "values": values})
+            player_stats_of[pid].append({"tournament": {"id": tid, "name": s["name"], "start": s["start"]},
+                                         "title": title, "columns": tbl["columns"], "values": values})
+
         write(out, f"t/{tid}.json", {**s, "series": r["series"], "mode": r["mode"],
                                      "perspective": r["perspective"], "teams": r["team_count"],
                                      "source": r["source_url"], "placements": placements,
                                      "stages": stages, "squads": squad_list,
+                                     "playerStats": list(stat_tables.values()),
                                      "videos": by_tournament.get(tid, [])[:20]})
 
     team_index = []
@@ -263,7 +279,7 @@ def build(con, out):
         })
     team_index.sort(key=lambda t: (-t["titles"], -t["events"], t["name"]))
     write(out, "teams/index.json", team_index)
-    n_players = write_players(con, out, careers, player_meta)
+    n_players = write_players(con, out, careers, player_meta, player_stats_of)
     return len(tours), len(team_index), n_players
 
 
@@ -274,7 +290,29 @@ SOCIAL_URL = {
 PLAYING = ("player", "captain", "substitute")
 
 
-def write_players(con, out, careers, player_meta):
+def career_kills(stats):
+    """Total finishes over a player's tournaments, one table per tournament (the one with the most
+    matches, usually 'Overall'), so stage tables are not counted twice."""
+    best = {}
+    for st in stats:
+        cols = [c.lower() for c in st["columns"]]
+        if "finishes" not in cols or "matches played" not in cols:
+            continue
+        try:
+            matches = int(st["values"][cols.index("matches played")] or 0)
+            kills = int(st["values"][cols.index("finishes")] or 0)
+        except (ValueError, TypeError):
+            continue
+        tid = st["tournament"]["id"]
+        if tid not in best or matches > best[tid][0]:
+            best[tid] = (matches, kills)
+    if not best:
+        return None
+    m, k = sum(v[0] for v in best.values()), sum(v[1] for v in best.values())
+    return {"matches": m, "kills": k, "tournaments": len(best), "perMatch": round(k / m, 2) if m else None}
+
+
+def write_players(con, out, careers, player_meta, player_stats_of):
     """players/<id>.json: Liquipedia profile + career built from the rosters; players/index.json for search."""
     profiles = {(r["wiki"], r["page"]): r for r in con.execute("SELECT * FROM players")}
     index = []
@@ -316,6 +354,8 @@ def write_players(con, out, careers, player_meta):
             "podiums": sum(1 for e in played if e["place"] and e["place"] <= 3),
             # what the player's teams won in events the player was rostered for (not a personal payout)
             "teamWinnings": sum(e["prize"] or 0 for e in played if (e["currency"] or "").lower() == "inr"),
+            "stats": sorted(player_stats_of.get(pid, []), key=lambda x: x["tournament"]["start"] or "", reverse=True),
+            "statTotals": career_kills(player_stats_of.get(pid, [])),
         }
         write(out, f"players/{pid}.json", data)
         index.append({"id": pid, "tag": data["tag"], "name": data["name"], "game": game,

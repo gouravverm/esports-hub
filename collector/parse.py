@@ -110,6 +110,37 @@ def parse_tournament(wikitext):
     return {"info": info, "placements": placements, "rosters": parse_rosters(templates)}
 
 
+def parse_player_stats(wikitext):
+    """{{PlayerTournamentStats |title=.. |stat1=Matches<br>Played |stat2=Finishes ..
+         |{{TournamentStats/row|team=x |player=y |stat1=56 |stat2=98 ..}} }}
+    -> [{"title", "columns": [...], "rows": [{"player", "page", "team", "values": [...]}]}]"""
+    code = mwparserfromhell.parse(wikitext)
+    tables = []
+    for tpl in code.filter_templates(recursive=True):
+        if _name(tpl) != "playertournamentstats":
+            continue
+        n_stats = 0
+        columns = []
+        while tpl.has(f"stat{n_stats + 1}"):
+            n_stats += 1
+            raw = re.sub(r"<br\s*/?>", " ", str(tpl.get(f"stat{n_stats}").value), flags=re.I)
+            columns.append(_clean(raw) or f"Stat {n_stats}")
+        rows = []
+        for row in mwparserfromhell.parse(str(tpl)).filter_templates(recursive=True):
+            if _name(row) != "tournamentstats/row":
+                continue
+            player = _param(row, "player")
+            if not player:
+                continue
+            rows.append({"player": player, "page": _param(row, "link") or player, "team": _param(row, "team"),
+                         "values": [_param(row, f"stat{i}") for i in range(1, n_stats + 1)]})
+        if rows:
+            # the title param can carry an <includeonly> footer ("|footer=..|limit=10"): keep the title only
+            own = re.split(r"\s*\|", _param(tpl, "title") or "")[0].strip()
+            tables.append({"title": own or _section_title(wikitext, tpl), "columns": columns, "rows": rows})
+    return tables
+
+
 def parse_rosters(templates):
     """Squads from both roster formats. Each row: team, player (as shown), page (the player's
     Liquipedia page when the roster links one), role, flag."""
@@ -268,6 +299,22 @@ def _new_match(tpl):
     return matches, results, start
 
 
+def _scheduled_teams(tpl):
+    """Teams of a battle-royale {{Match}} whose MS cells are still empty (has {{MS}} slots)."""
+    teams = []
+    for p in tpl.params:
+        if not re.fullmatch(r"opponent\d+", str(p.name).strip()):
+            continue
+        opp = next(iter(mwparserfromhell.parse(str(p.value)).filter_templates()), None)
+        if opp is None or not opp.has("1"):
+            continue
+        has_slots = any(_name(t) == "ms" for t in mwparserfromhell.parse(str(opp)).filter_templates(recursive=True))
+        team = _clean(opp.get("1").value)
+        if team and has_slots:
+            teams.append(team)
+    return teams
+
+
 def _sum(values):
     nums = [v if isinstance(v, (int, float)) else _number(v) for v in values]
     nums = [n for n in nums if n is not None]
@@ -395,8 +442,16 @@ def parse_stages(wikitext):
             title = None
         else:
             continue
-        if not results:  # e.g. head-to-head Clash Squad matches
-            continue
+        if not results:
+            # a battle-royale table that has not started yet: keep its schedule and teams so the
+            # app can show "Match 1 · Rondo · 30 Oct, 2:00 PM" before any result exists
+            teams = _scheduled_teams(tpl) if name == "match" else []
+            if matches and teams:
+                kill, places = _points_system(tpl)
+                stages.append({**_totals_stage(_section_title(wikitext, tpl, title),
+                                               [{"team": t, "total": None, "rounds": {}} for t in teams]),
+                               "kill_points": kill, "placement_points": places, "matches": matches})
+            continue  # head-to-head Clash Squad matches have neither
         kill, places = _points_system(tpl)
         stages.append({
             "title": _section_title(wikitext, tpl, title),

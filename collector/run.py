@@ -17,7 +17,7 @@ import config
 import db
 import teams
 from liquipedia import Liquipedia
-from parse import parse_stages, parse_tournament
+from parse import parse_player_stats, parse_stages, parse_tournament
 
 
 def game_label(key, game_raw):
@@ -72,12 +72,15 @@ def process(con, key, wiki, pages, cat_set):
         own = owner(page, known)
         if not own:
             continue
-        stages = parse_stages(_cached(con, wiki, page)[1])
+        text = _cached(con, wiki, page)[1]
+        stages = parse_stages(text)
         if page != own:  # name tables from sub-pages after the sub-page, e.g. "League/Week 1 - Results"
             sub = page[len(own) + 1:]
             for st in stages:
                 st["title"] = f"{sub} - {st['title']}" if st["title"] else sub
-        db.save_stages(con, db.tournament_id(con, wiki, own), page, stages)
+        tid = db.tournament_id(con, wiki, own)
+        db.save_stages(con, tid, page, stages)
+        db.save_player_stats(con, tid, page, parse_player_stats(text))
     con.commit()
     return saved
 

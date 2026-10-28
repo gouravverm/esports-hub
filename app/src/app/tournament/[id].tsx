@@ -21,13 +21,14 @@ import {
   Winner,
   styles as ui,
 } from '@/components/ui';
+import { PlayerStatsView } from '@/components/playerStats';
 import { VideoCard } from '@/components/video';
 import { api, useData } from '@/lib/api';
 import { dateRange, dateTime, money, ordinal } from '@/lib/format';
 import { colors, fonts, gameColors, placeColor, space, type } from '@/lib/theme';
 import type { GameKey, Stage, TeamRef, Tournament } from '@/lib/types';
 
-type Tab = 'table' | 'matches' | 'results' | 'squads' | 'videos';
+type Tab = 'table' | 'matches' | 'results' | 'stats' | 'squads' | 'videos';
 
 const WIDE = 900; // table and Finish-vs-Fight side by side from here
 
@@ -45,6 +46,7 @@ export default function TournamentScreen() {
     ...(stages.length ? [{ key: 'table' as Tab, label: 'Points table' }] : []),
     ...(stages.some((s) => s.matches.length) ? [{ key: 'matches' as Tab, label: 'Matches' }] : []),
     ...(data.placements.length ? [{ key: 'results' as Tab, label: 'Final results' }] : []),
+    ...(data.playerStats?.length ? [{ key: 'stats' as Tab, label: 'Player stats' }] : []),
     ...(data.squads.length ? [{ key: 'squads' as Tab, label: 'Squads' }] : []),
     ...(data.videos?.length ? [{ key: 'videos' as Tab, label: 'Videos' }] : []),
   ];
@@ -58,6 +60,7 @@ export default function TournamentScreen() {
         {current === 'table' && <StagesView stages={stages} game={data.game} mode="table" />}
         {current === 'matches' && <StagesView stages={stages.filter((s) => s.matches.length)} game={data.game} mode="matches" />}
         {current === 'results' && <ResultsView t={data} />}
+        {current === 'stats' && <PlayerStatsView tables={data.playerStats!} />}
         {current === 'squads' && <SquadsView t={data} />}
         {current === 'videos' && (
           <View style={{ gap: space.md, paddingHorizontal: space.lg }}>
@@ -199,6 +202,8 @@ function StandingsTable({ stage, game }: { stage: Stage; game: GameKey }) {
   // matches the count is already in the finding line, so the column can go
   const sameMatches = new Set(stage.standings.map((r) => r.matches)).size === 1;
   const [showM, showW, showK] = [has('matches') && !(width < 480 && sameMatches), has('wwcd'), has('kills')];
+  // before the first result the order is only the page's list of teams: no ranks, no leader
+  const started = stage.standings.some((r) => r.points != null);
   const hue = gameColors[game].hue;
   return (
     <Card style={{ paddingVertical: space.sm, paddingHorizontal: space.md, marginHorizontal: space.lg }}>
@@ -211,12 +216,12 @@ function StandingsTable({ stage, game }: { stage: Stage; game: GameKey }) {
         <Text style={[s.pts, s.headText]}>Pts</Text>
       </View>
       {stage.standings.map((r, i) => (
-        <View key={`${r.team.id}-${i}`} style={[s.row, s.ruled, i === 0 && { borderLeftColor: hue }]}>
-          <Text style={[s.rank, { color: placeColor(i + 1) }]}>{i + 1}</Text>
+        <View key={`${r.team.id}-${i}`} style={[s.row, s.ruled, started && i === 0 && { borderLeftColor: hue }]}>
+          <Text style={[s.rank, { color: started ? placeColor(i + 1) : colors.faint }]}>{started ? i + 1 : '–'}</Text>
           <View style={[s.team, { flexDirection: 'row', alignItems: 'center', gap: space.sm }]}>
             <TeamAvatar name={r.team.name} size={28} />
             <View style={{ flex: 1 }}>
-              <TeamLink team={r.team} bold={i === 0} />
+              <TeamLink team={r.team} bold={started && i === 0} />
             </View>
           </View>
           {showM && <Text style={s.num}>{r.matches ?? '–'}</Text>}
@@ -225,6 +230,11 @@ function StandingsTable({ stage, game }: { stage: Stage; game: GameKey }) {
           <Text style={s.pts}>{r.points ?? '–'}</Text>
         </View>
       ))}
+      {!stage.standings.some((r) => r.points != null) && (
+        <Text style={[ui.muted, { color: colors.faint, paddingTop: space.md }]}>
+          Abhi koi match nahi khela gaya. Points table pehle match ke result ke baad bharega.
+        </Text>
+      )}
       {stage.killPoints != null && (
         <Text style={[ui.muted, { color: colors.faint, paddingVertical: space.md }]}>
           {stage.killPoints} pt per kill
@@ -294,9 +304,26 @@ function FinishVsFight({ stage, game, limit }: { stage: Stage; game: GameKey; li
 
 function MatchList({ stage }: { stage: Stage }) {
   const [open, setOpen] = useState<number | null>(null);
+  // played matches newest first, then the schedule of what is still to come
+  const played = stage.matches.filter((m) => m.results.length).reverse();
+  const upcoming = stage.matches.filter((m) => !m.results.length);
   return (
     <View>
-      {[...stage.matches].reverse().map((m) => {
+      {upcoming.length ? (
+        <Card style={{ paddingVertical: space.sm }}>
+          <Text style={[ui.muted, { color: colors.faint, paddingVertical: space.xs }]}>
+            {played.length ? 'Aage ke matches' : 'Schedule · results har match ke baad aayenge'}
+          </Text>
+          {upcoming.map((m, i) => (
+            <View key={m.no} style={[s.row, i > 0 && s.ruled, { paddingLeft: 0, borderLeftWidth: 0 }]}>
+              <Text style={[s.place, { color: colors.text }]}>M{m.no}</Text>
+              <Text style={[ui.text, { flex: 1 }]}>{m.map ?? 'Map TBA'}</Text>
+              <Text style={[ui.muted, { color: colors.faint }]}>{dateTime(m.at)}</Text>
+            </View>
+          ))}
+        </Card>
+      ) : null}
+      {played.map((m) => {
         const winner = m.results.find((r) => r.place === 1);
         const topKills = [...m.results].sort((a, b) => b.kills - a.kills)[0];
         const expanded = open === m.no;

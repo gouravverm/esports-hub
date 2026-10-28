@@ -64,6 +64,13 @@ CREATE TABLE IF NOT EXISTS players (
     revid INTEGER, updated_at TEXT,
     PRIMARY KEY (wiki, page)
 );
+-- per-player tournament statistics (kills/finishes, knocks, FPM ...) from "/Statistics" pages
+CREATE TABLE IF NOT EXISTS player_stats (
+    tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    source_page TEXT NOT NULL, table_no INTEGER, title TEXT, columns TEXT,  -- columns: JSON list
+    player TEXT, page TEXT, team TEXT, stat_values TEXT                     -- stat_values: JSON list
+);
+CREATE INDEX IF NOT EXISTS ix_pstats_tournament ON player_stats(tournament_id);
 -- roster spelling / link -> resolved player page
 CREATE TABLE IF NOT EXISTS player_alias (
     wiki TEXT NOT NULL, alias TEXT NOT NULL, page TEXT,
@@ -245,6 +252,14 @@ def save_stages(con, tid, page, stages):
                          for r in st["totals"]])
 
 
+def save_player_stats(con, tid, page, tables):
+    """Replace the player statistics tables that came from this page."""
+    con.execute("DELETE FROM player_stats WHERE source_page = ? AND tournament_id = ?", (page, tid))
+    con.executemany("INSERT INTO player_stats VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+        (tid, page, n, t["title"], json.dumps(t["columns"]), r["player"], r["page"], r["team"], json.dumps(r["values"]))
+        for n, t in enumerate(tables, start=1) for r in t["rows"]])
+
+
 def team_names(con, wiki):
     """Every team spelling stored for this wiki, from all tables."""
     rows = con.execute("""
@@ -254,5 +269,6 @@ def team_names(con, wiki):
               JOIN tournaments t ON t.id = s.tournament_id WHERE t.wiki = ?
         UNION SELECT x.team FROM stage_totals x JOIN stages s ON s.id = x.stage_id
               JOIN tournaments t ON t.id = s.tournament_id WHERE t.wiki = ?
-    """, (wiki, wiki, wiki, wiki))
+        UNION SELECT ps.team FROM player_stats ps JOIN tournaments t ON t.id = ps.tournament_id WHERE t.wiki = ?
+    """, (wiki, wiki, wiki, wiki, wiki))
     return [r[0] for r in rows]

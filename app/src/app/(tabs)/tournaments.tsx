@@ -22,7 +22,15 @@ export default function Tournaments() {
 
   const list = useMemo(() => {
     const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-    return (data ?? []).filter((t) => {
+    // live first, then upcoming soonest first, then finished newest first
+    const rank = (s: string | null) => (s === 'ongoing' ? 0 : s === 'upcoming' ? 1 : 2);
+    const ordered = [...(data ?? [])].sort((a, b) => {
+      const r = rank(a.status) - rank(b.status);
+      if (r) return r;
+      const [x, y] = [a.start ?? '', b.start ?? ''];
+      return a.status === 'upcoming' ? x.localeCompare(y) : y.localeCompare(x);
+    });
+    return ordered.filter((t) => {
       const tierOk =
         tier === 'all' || (tier === 'other' ? !['S-Tier', 'A-Tier', 'B-Tier'].includes(t.tier ?? '') : t.tier === tier);
       const hay = `${t.name} ${t.organizer ?? ''} ${t.start ?? ''}`.toLowerCase();

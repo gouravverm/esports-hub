@@ -98,6 +98,14 @@ export interface Tournament extends TournamentSummary {
   stages: Stage[];
   squads: { team: TeamRef; players: SquadMember[] }[];
   videos?: Video[];
+  playerStats?: PlayerStatTable[];
+}
+
+/** A Liquipedia "Finish Rankings" table: one row per player, columns as named on the page. */
+export interface PlayerStatTable {
+  title: string;
+  columns: string[];
+  rows: { player: TeamRef; team: TeamRef; values: (string | null)[] }[];
 }
 
 export interface SquadMember {
@@ -150,6 +158,8 @@ export interface Player {
   titles: number;
   podiums: number;
   teamWinnings: number;
+  stats?: { tournament: { id: number; name: string; start: string | null }; title: string; columns: string[]; values: (string | null)[] }[];
+  statTotals?: { matches: number; kills: number; tournaments: number; perMatch: number | null } | null;
 }
 
 export interface TeamSummary {
