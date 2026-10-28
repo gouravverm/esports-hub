@@ -3,7 +3,8 @@ import { Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
-import { date, dateRange, initials, money } from '@/lib/format';
+import { LivePulse, TeamCrest } from '@/components/graphics';
+import { date, dateRange, money } from '@/lib/format';
 import { GAMES, gameLabel, useGame } from '@/lib/game';
 import { colors, fonts, gameColors, radius, space, touch, type } from '@/lib/theme';
 import type { GameKey, SquadMember, TournamentSummary } from '@/lib/types';
@@ -116,26 +117,18 @@ export function Badge({ text, color = colors.muted }: { text: string; color?: st
 }
 
 export function LiveDot() {
-  return (
-    <View style={styles.liveWrap}>
-      <View style={styles.liveDot} />
-      <Text style={styles.liveText}>LIVE</Text>
-    </View>
-  );
+  return <LivePulse />;
 }
 
+/** Teams are shown with a generated crest (see graphics.tsx), never a real logo. */
 export function TeamAvatar({ name, size = 32 }: { name: string; size?: number }) {
-  return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarText, { fontSize: Math.max(11, size * 0.38) }]}>{initials(name)}</Text>
-    </View>
-  );
+  return <TeamCrest name={name} size={size} />;
 }
 
 export function Winner({ name, prefix }: { name: string; prefix?: string }) {
   return (
     <View style={styles.winnerRow}>
-      <Ionicons name="trophy" size={14} color={colors.gold} accessibilityElementsHidden importantForAccessibility="no" />
+      <Ionicons name="trophy" size={14} color={colors.gold} aria-hidden />
       <Text style={styles.winner} numberOfLines={1}>
         {prefix}
         {name}

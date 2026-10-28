@@ -22,6 +22,8 @@ export interface TournamentSummary {
   prize: number | null;
   currency: string | null;
   winner: string | null;
+  ticker?: string | null; // short name, e.g. "BMIC"
+  cover?: string | null; // official stream thumbnail, when a video is matched
 }
 
 export interface Video {

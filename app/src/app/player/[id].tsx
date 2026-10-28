@@ -2,6 +2,7 @@ import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Badge, Card, ErrorView, GameBadge, Loading, Screen, SectionTitle, SourceNote, TeamAvatar, styles as ui } from '@/components/ui';
+import { PlayerBadge } from '@/components/graphics';
 import { cell } from '@/components/playerStats';
 import { api, useData } from '@/lib/api';
 import { age, date, money, ordinal } from '@/lib/format';
@@ -43,7 +44,7 @@ export default function PlayerScreen() {
       <ScrollView>
         <Card style={{ marginTop: space.lg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <TeamAvatar name={p.tag} size={56} />
+            <PlayerBadge name={p.tag} size={56} />
             <View style={{ flex: 1 }}>
               <Text style={[type.display, { color: colors.text }]} role="heading" aria-level={1}>
                 {p.tag}

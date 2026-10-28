@@ -21,6 +21,7 @@ import {
   Winner,
   styles as ui,
 } from '@/components/ui';
+import { ChickenIcon, KillIcon, MapChip, shortName, TournamentBanner } from '@/components/graphics';
 import { PlayerStatsView } from '@/components/playerStats';
 import { VideoCard } from '@/components/video';
 import { api, useData } from '@/lib/api';
@@ -118,7 +119,8 @@ function Header({ t, lead }: { t: Tournament; lead?: Stage }) {
     .join(' · ');
   const line = finding(t, lead);
   return (
-    <Card style={{ marginTop: space.lg }}>
+    <Card style={{ marginTop: space.lg, overflow: 'hidden' }}>
+      <TournamentBanner ticker={shortName(t)} game={t.game} cover={t.cover} />
       <View style={ui.cardTop}>
         {t.status === 'ongoing' && <LiveDot />}
         <GameBadge game={t.game} />
@@ -317,7 +319,9 @@ function MatchList({ stage }: { stage: Stage }) {
           {upcoming.map((m, i) => (
             <View key={m.no} style={[s.row, i > 0 && s.ruled, { paddingLeft: 0, borderLeftWidth: 0 }]}>
               <Text style={[s.place, { color: colors.text }]}>M{m.no}</Text>
-              <Text style={[ui.text, { flex: 1 }]}>{m.map ?? 'Map TBA'}</Text>
+              <View style={{ flex: 1, alignItems: 'flex-start' }}>
+                {m.map ? <MapChip map={m.map} /> : <Text style={ui.muted}>Map TBA</Text>}
+              </View>
               <Text style={[ui.muted, { color: colors.faint }]}>{dateTime(m.at)}</Text>
             </View>
           ))}
@@ -330,18 +334,28 @@ function MatchList({ stage }: { stage: Stage }) {
         return (
           <Pressable key={m.no} onPress={() => setOpen(expanded ? null : m.no)} accessibilityRole="button">
             <Card>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.sm }}>
-                <Text style={ui.cardTitle}>
-                  Match {m.no}
-                  {m.map ? ` · ${m.map}` : ''}
-                </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                  <Text style={[ui.cardTitle, { marginBottom: 0 }]}>Match {m.no}</Text>
+                  <MapChip map={m.map} />
+                </View>
                 <Text style={[ui.muted, { color: colors.faint }]}>{dateTime(m.at)}</Text>
               </View>
-              {winner && <Winner name={`${winner.team.name} (${winner.kills} kills)`} prefix="WWCD: " />}
+              {winner && (
+                <View style={s.matchLine}>
+                  <ChickenIcon />
+                  <Text style={ui.winner} numberOfLines={1}>
+                    {winner.team.name} · {winner.kills} kills
+                  </Text>
+                </View>
+              )}
               {topKills && (
-                <Text style={[ui.muted, { marginTop: 2 }]}>
-                  Most kills: {topKills.team.name} – {topKills.kills}
-                </Text>
+                <View style={s.matchLine}>
+                  <KillIcon />
+                  <Text style={ui.muted} numberOfLines={1}>
+                    Most kills: {topKills.team.name} – {topKills.kills}
+                  </Text>
+                </View>
               )}
               {expanded &&
                 m.results.map((r, i) => (
@@ -418,4 +432,5 @@ const s = StyleSheet.create({
   swatch: { width: 10, height: 10, borderRadius: 2 },
   track: { flexDirection: 'row', height: 8, marginTop: 6, borderRadius: 2, overflow: 'hidden' },
   more: { minHeight: 44, justifyContent: 'center', marginTop: space.sm },
+  matchLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
 });

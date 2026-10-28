@@ -131,7 +131,14 @@ def summary(row):
         "type": row["type"], "organizer": row["organizer"], "city": row["city"],
         "start": row["start_date"], "end": row["end_date"], "status": row["status"],
         "prize": row["prize_pool"], "currency": row["currency"],
+        "ticker": banner_name(row["abbreviation"], row["ticker"]),  # short name for banners, e.g. "BMIC"
     }
+
+
+def banner_name(*names):
+    """The shortest of Liquipedia's short names, without its year: 'BMIC', 'BGMS S5'."""
+    options = [re.sub(r"\s+20\d\d$", "", n).strip() for n in names if n]
+    return min(options, key=len) if options else None
 
 
 def build(con, out):
@@ -153,6 +160,13 @@ def build(con, out):
         s["winner"] = winners.get(s["id"])
 
     videos = load_videos(con, {s["id"]: s for _, s in tours})
+    # cover art: the official thumbnail of the tournament's first matched stream or video
+    covers = {}
+    for v in videos:
+        if v["tournament"] and v["thumb"]:
+            covers.setdefault(v["tournament"]["id"], v["thumb"])
+    for _, s in tours:
+        s["cover"] = covers.get(s["id"])
 
     # index + per-game lists
     index = {"updated": db.now(), "source": "Liquipedia (CC-BY-SA 3.0)", "games": {}}

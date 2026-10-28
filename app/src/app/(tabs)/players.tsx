@@ -2,7 +2,8 @@ import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Empty, ErrorView, GameSwitcher, Loading, Screen, TeamAvatar, Winner, styles } from '@/components/ui';
+import { PlayerBadge } from '@/components/graphics';
+import { Empty, ErrorView, GameSwitcher, Loading, Screen, Winner, styles } from '@/components/ui';
 import { api, useData } from '@/lib/api';
 import { useGame } from '@/lib/game';
 import { colors, space } from '@/lib/theme';
@@ -34,7 +35,7 @@ export default function Players() {
         renderItem={({ item }) => (
           <Link href={{ pathname: '/player/[id]', params: { id: item.id } }} asChild>
             <Pressable style={row}>
-              <TeamAvatar name={item.tag} size={40} />
+              <PlayerBadge name={item.tag} size={40} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>{item.tag}</Text>
                 <Text style={styles.muted} numberOfLines={1}>

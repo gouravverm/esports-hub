@@ -17,6 +17,7 @@ import {
   SourceNote,
   styles,
 } from '@/components/ui';
+import { shortName, TournamentBanner } from '@/components/graphics';
 import { VideoRow } from '@/components/video';
 import { api, useData } from '@/lib/api';
 import { dateRange, money } from '@/lib/format';
@@ -41,7 +42,8 @@ function when(t: TournamentSummary): string {
 function Lead({ t, streams }: { t: TournamentSummary; streams: Video[] }) {
   const stream = streams.find((v) => v.tournament?.id === t.id);
   return (
-    <Card style={{ marginTop: space.md }}>
+    <Card style={{ marginTop: space.md, overflow: 'hidden' }}>
+      <TournamentBanner ticker={shortName(t)} game={t.game} cover={t.cover} height={170} />
       <View style={styles.cardTop}>
         {t.status === 'ongoing' ? <LiveDot /> : <Badge text={t.status === 'upcoming' ? 'Next up' : 'Latest'} color={colors.text} />}
         <GameBadge game={t.game} />
