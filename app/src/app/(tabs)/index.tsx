@@ -1,81 +1,17 @@
-// Home — the same direction as the Tournament screen (design-system/esports-hub/pages/tournament.md):
-// answer "what is on now, or next?" first, colour only on data, lists as ruled rows in one card.
+// Home: a swipeable hero of live / next / latest big events, then streams, the top fraggers and
+// teams of the game, and compact lists of what is coming up and what just finished.
 import { Link } from 'expo-router';
-import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
 
-import {
-  Badge,
-  Card,
-  EventRow,
-  ErrorView,
-  GameBadge,
-  GameSwitcher,
-  LiveDot,
-  Loading,
-  Screen,
-  SectionTitle,
-  SourceNote,
-  styles,
-} from '@/components/ui';
-import { shortName, TournamentBanner } from '@/components/graphics';
+import { HeroCarousel, TopFraggers, TopTeams } from '@/components/showcase';
+import { Card, EventRow, ErrorView, GameSwitcher, Loading, Screen, SectionTitle, SourceNote, styles } from '@/components/ui';
 import { VideoRow } from '@/components/video';
 import { api, useData } from '@/lib/api';
-import { dateRange, money } from '@/lib/format';
 import { useGame } from '@/lib/game';
-import { colors, space, type } from '@/lib/theme';
-import type { TournamentSummary, Video } from '@/lib/types';
+import { colors, space } from '@/lib/theme';
+import type { TournamentSummary } from '@/lib/types';
 
-/** "Starts in 2 days", "Starts today", "Day 2 of 3". */
-function when(t: TournamentSummary): string {
-  if (!t.start) return 'Dates TBA';
-  const day = (iso: string) => new Date(iso.slice(0, 10) + 'T00:00:00').getTime();
-  const today = new Date(new Date().toDateString()).getTime();
-  const d = Math.round((day(t.start) - today) / 86400000);
-  if (t.status === 'ongoing') {
-    const total = t.end && /^\d{4}-\d{2}-\d{2}$/.test(t.end) ? Math.round((day(t.end) - day(t.start)) / 86400000) + 1 : null;
-    return total ? `Day ${1 - d} of ${total}` : 'On now';
-  }
-  if (d <= 0) return 'Starts today';
-  return d === 1 ? 'Starts tomorrow' : `Starts in ${d} days`;
-}
-
-function Lead({ t, streams }: { t: TournamentSummary; streams: Video[] }) {
-  const stream = streams.find((v) => v.tournament?.id === t.id);
-  return (
-    <Card style={{ marginTop: space.md, overflow: 'hidden' }}>
-      <TournamentBanner ticker={shortName(t)} game={t.game} cover={t.cover} height={170} />
-      <View style={styles.cardTop}>
-        {t.status === 'ongoing' ? <LiveDot /> : <Badge text={t.status === 'upcoming' ? 'Next up' : 'Latest'} color={colors.text} />}
-        <GameBadge game={t.game} />
-        {t.tier ? <Badge text={t.tier} color={t.tier === 'S-Tier' ? colors.gold : colors.muted} /> : null}
-      </View>
-      <Link href={{ pathname: '/tournament/[id]', params: { id: String(t.id) } }} style={[type.display, { color: colors.text }]}>
-        {t.name}
-      </Link>
-      <Text style={[styles.text, { marginTop: 6 }]}>
-        {when(t)} · {dateRange(t.start, t.end)}
-      </Text>
-      <Text style={[styles.muted, { color: colors.faint, marginTop: 2 }]}>
-        {[t.organizer, t.city, t.type].filter(Boolean).join(' · ')}
-      </Text>
-      <View style={s.leadFoot}>
-        {t.prize ? (
-          <View>
-            <Text style={[type.heading, { color: colors.text, fontSize: 20 }]}>{money(t.prize, t.currency)}</Text>
-            <Text style={[styles.muted, { color: colors.faint }]}>prize pool</Text>
-          </View>
-        ) : (
-          <View />
-        )}
-        {stream ? (
-          <Pressable onPress={() => Linking.openURL(stream.url)} style={s.watch} accessibilityRole="link">
-            <Text style={s.watchText}>{stream.status === 'live' ? 'Watch live' : 'Stream link'}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </Card>
-  );
-}
+const BIG = ['S-Tier', 'A-Tier'];
 
 export default function Home() {
   const { game } = useGame();
@@ -85,21 +21,55 @@ export default function Home() {
   if (error || !data) return <ErrorView message={error ?? 'no data'} onRetry={reload} />;
 
   const g = data.games[game];
+  // hero: everything live, the next two, then the latest big finals; no repeats, six at most
+  const seen = new Set<number>();
+  const hero = [...g.live, ...g.upcoming.slice(0, 2), ...g.recent.filter((t) => BIG.includes(t.tier ?? '')).slice(0, 3)]
+    .filter((t: TournamentSummary) => !seen.has(t.id) && seen.add(t.id))
+    .slice(0, 6);
+  const upcoming = g.upcoming.filter((t) => !hero.slice(0, 3).some((h) => h.id === t.id)).slice(0, 6);
   const streams = g.streams ?? [];
-  const lead = g.live[0] ?? g.upcoming[0] ?? g.recent[0];
-  const upcoming = [...g.live.slice(1), ...g.upcoming.filter((t) => t.id !== lead?.id)].slice(0, 6);
 
   return (
     <Screen>
       <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.link} />}>
         <GameSwitcher />
 
-        {lead ? <Lead t={lead} streams={streams} /> : null}
+        {hero.length ? <HeroCarousel items={hero} /> : null}
 
         {streams.length ? (
           <>
             <SectionTitle>Streams</SectionTitle>
             <VideoRow videos={streams} />
+          </>
+        ) : null}
+
+        {g.topFraggers?.length ? (
+          <>
+            <SectionTitle
+              right={
+                <Link href="/players" style={[styles.link, s.more]}>
+                  Players
+                </Link>
+              }
+            >
+              Top fraggers
+            </SectionTitle>
+            <TopFraggers players={g.topFraggers} />
+          </>
+        ) : null}
+
+        {g.topTeams?.length ? (
+          <>
+            <SectionTitle
+              right={
+                <Link href="/teams" style={[styles.link, s.more]}>
+                  Teams
+                </Link>
+              }
+            >
+              Most titles
+            </SectionTitle>
+            <TopTeams teams={g.topTeams} />
           </>
         ) : null}
 
@@ -116,7 +86,7 @@ export default function Home() {
 
         <SectionTitle
           right={
-            <Link href="/tournaments" style={[styles.link, { paddingVertical: 12, paddingLeft: 12 }]}>
+            <Link href="/tournaments" style={[styles.link, s.more]}>
               Sab dekho
             </Link>
           }
@@ -147,7 +117,5 @@ export default function Home() {
 
 const s = StyleSheet.create({
   list: { paddingVertical: space.xs },
-  leadFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: space.lg },
-  watch: { backgroundColor: colors.primary, borderRadius: 18, minHeight: 36, paddingHorizontal: space.lg, justifyContent: 'center' },
-  watchText: { color: colors.onPrimary, fontFamily: 'ChakraPetch_700Bold', fontSize: 14 },
+  more: { paddingVertical: 12, paddingLeft: 12 },
 });

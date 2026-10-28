@@ -293,8 +293,15 @@ def build(con, out):
         })
     team_index.sort(key=lambda t: (-t["titles"], -t["events"], t["name"]))
     write(out, "teams/index.json", team_index)
-    n_players = write_players(con, out, careers, player_meta, player_stats_of)
-    return len(tours), len(team_index), n_players
+    players = write_players(con, out, careers, player_meta, player_stats_of)
+
+    # Home strips: most titles, and most kills where tournaments publish player stats
+    for key, g in index["games"].items():
+        g["topTeams"] = [t for t in team_index if t["game"] == key and t["titles"]][:10]
+        g["topFraggers"] = sorted((p for p in players if p["game"] == key and p["kills"] and (p["matches"] or 0) >= 20),
+                                  key=lambda p: -p["kills"])[:10]
+    write(out, "index.json", index)
+    return len(tours), len(team_index), len(players)
 
 
 SOCIAL_URL = {
@@ -372,11 +379,13 @@ def write_players(con, out, careers, player_meta, player_stats_of):
             "statTotals": career_kills(player_stats_of.get(pid, [])),
         }
         write(out, f"players/{pid}.json", data)
+        totals = data["statTotals"] or {}
         index.append({"id": pid, "tag": data["tag"], "name": data["name"], "game": game,
-                      "team": latest["team"]["name"], "events": data["events"], "titles": titles})
+                      "team": latest["team"]["name"], "events": data["events"], "titles": titles,
+                      "kills": totals.get("kills"), "perMatch": totals.get("perMatch"), "matches": totals.get("matches")})
     index.sort(key=lambda p: (-p["titles"], -p["events"], p["tag"].lower()))
     write(out, "players/index.json", index)
-    return len(index)
+    return index
 
 
 def main():

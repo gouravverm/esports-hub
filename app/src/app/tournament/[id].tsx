@@ -23,6 +23,7 @@ import {
 } from '@/components/ui';
 import { ChickenIcon, KillIcon, MapChip, shortName, TournamentBanner } from '@/components/graphics';
 import { PlayerStatsView } from '@/components/playerStats';
+import { Podium } from '@/components/showcase';
 import { VideoCard } from '@/components/video';
 import { api, useData } from '@/lib/api';
 import { dateRange, dateTime, money, ordinal } from '@/lib/format';
@@ -183,6 +184,7 @@ function StagesView({ stages, game, mode }: { stages: Stage[]; game: GameKey; mo
       ) : (
         <View style={wide ? s.grid : undefined}>
           <View style={wide ? { flex: 3, maxWidth: 760 } : undefined}>
+            <Podium rows={stage.standings} />
             <StandingsTable stage={stage} game={game} />
           </View>
           {hasSplit && (

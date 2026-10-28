@@ -48,6 +48,8 @@ export interface GameIndex {
   recent: TournamentSummary[];
   streams?: Video[]; // live or about to start
   videos?: Video[]; // newest uploads
+  topTeams?: TeamSummary[];
+  topFraggers?: PlayerSummary[];
 }
 
 export interface Index {
@@ -124,6 +126,9 @@ export interface PlayerSummary {
   team: string;
   events: number;
   titles: number;
+  kills?: number | null; // from tournaments that publish player stats
+  perMatch?: number | null;
+  matches?: number | null;
 }
 
 export interface PlayerEvent {

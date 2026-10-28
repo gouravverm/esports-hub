@@ -1,6 +1,6 @@
 // Esports graphics drawn in code (our own art, no team or publisher logos):
 // team crests, tournament banners, game icons, map chips and the live pulse.
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Pattern, Rect, Stop } from 'react-native-svg';
 
@@ -74,49 +74,75 @@ export function shortName(t: { ticker?: string | null; name: string }): string {
 
 /** The tournament's official stream thumbnail when we have one, else generated key art:
  *  the ticker set large over a striped field in the game's colour. */
-export function TournamentBanner({ ticker, game, cover, height = 150 }: { ticker: string; game: GameKey; cover?: string | null; height?: number }) {
+export function TournamentBanner({
+  ticker,
+  game,
+  cover,
+  height = 150,
+  bare,
+}: {
+  ticker: string;
+  game: GameKey;
+  cover?: string | null;
+  height?: number;
+  /** fill the parent (hero cards): no card bleed, ticker as a faint watermark, darker foot for text */
+  bare?: boolean;
+}) {
   const { hue, soft } = gameColors[game];
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, ''); // SVG ids are page-global on web: one set per banner
+  const frame = bare ? { height } : [s.banner, { height }];
+  const shade = (
+    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+      <Defs>
+        <LinearGradient id={`fade${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset={bare ? '0' : '0.45'} stopColor="#000" stopOpacity={bare ? '0.15' : '0'} />
+          <Stop offset="1" stopColor="#0A0D12" stopOpacity="0.95" />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill={`url(#fade${uid})`} />
+    </Svg>
+  );
   if (cover) {
     return (
-      <View style={[s.banner, { height }]}>
+      <View style={frame}>
         <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0.45" stopColor="#000" stopOpacity="0" />
-              <Stop offset="1" stopColor="#111" stopOpacity="0.95" />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#fade)" />
-        </Svg>
+        {shade}
       </View>
     );
   }
+  const size = ticker.length <= 7 ? 44 : ticker.length <= 12 ? 34 : 26; // web has no auto-fit
   return (
-    <View style={[s.banner, { height, backgroundColor: '#0D0D0D' }]}>
+    <View style={[frame, { backgroundColor: '#0D0D0D' }]}>
       <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
         <Defs>
-          <Pattern id="stripes" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+          <Pattern id={`stripes${uid}`} width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
             <Rect width="7" height="18" fill={soft} opacity="0.55" />
           </Pattern>
-          <LinearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+          <LinearGradient id={`glow${uid}`} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={hue} stopOpacity="0.35" />
             <Stop offset="1" stopColor="#000" stopOpacity="0" />
           </LinearGradient>
         </Defs>
-        <Rect width="100%" height="100%" fill="url(#stripes)" />
-        <Rect width="100%" height="100%" fill="url(#glow)" />
+        <Rect width="100%" height="100%" fill={`url(#stripes${uid})`} />
+        <Rect width="100%" height="100%" fill={`url(#glow${uid})`} />
         <Rect x="0" y="0" width="6" height="100%" fill={hue} />
       </Svg>
-      <View style={s.bannerText}>
-        {/* size by length (web has no auto-fit): short tickers big, long names on up to two lines */}
-        <Text
-          style={[s.ticker, { color: '#FFFFFF', textShadowColor: hue, fontSize: ticker.length <= 7 ? 44 : ticker.length <= 12 ? 34 : 26 }]}
-          numberOfLines={2}
-        >
-          {ticker}
-        </Text>
-      </View>
+      {bare ? (
+        <>
+          <View style={s.watermark}>
+            <Text style={[s.ticker, { fontSize: size * 1.6, color: '#FFFFFF', opacity: 0.16 }]} numberOfLines={1}>
+              {ticker}
+            </Text>
+          </View>
+          {shade}
+        </>
+      ) : (
+        <View style={s.bannerText}>
+          <Text style={[s.ticker, { color: '#FFFFFF', textShadowColor: hue, fontSize: size }]} numberOfLines={2}>
+            {ticker}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -139,17 +165,18 @@ const CONTOURS = Array.from({ length: 22 }, (_, i) => ({ d: contour(30 + i * 42,
  *  in the game's colour, all faint enough that text on the glass cards stays easy to read. */
 export function GameBackground({ game }: { game: GameKey }) {
   const { hue } = gameColors[game];
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, ''); // other screens stay mounted: keep SVG ids apart
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none" aria-hidden>
       <Svg width="100%" height="100%" viewBox="0 0 400 960" preserveAspectRatio="xMidYMin slice">
         <Defs>
-          <LinearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id={`sky${uid}`} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={hue} stopOpacity="0.28" />
             <Stop offset="0.35" stopColor={hue} stopOpacity="0.08" />
             <Stop offset="1" stopColor="#000000" stopOpacity="0" />
           </LinearGradient>
         </Defs>
-        <Rect width="400" height="960" fill="url(#sky)" />
+        <Rect width="400" height="960" fill={`url(#sky${uid})`} />
         {/* map grid, like the squares on an in-game map */}
         <G stroke="#FFFFFF" strokeOpacity="0.05" strokeWidth="1">
           {Array.from({ length: 9 }, (_, i) => (
@@ -243,6 +270,7 @@ const s = StyleSheet.create({
   player: { alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   banner: { borderTopLeftRadius: radius, borderTopRightRadius: radius, overflow: 'hidden', marginHorizontal: -space.lg, marginTop: -space.lg, marginBottom: space.md },
   bannerText: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, justifyContent: 'flex-end', padding: space.lg },
+  watermark: { position: 'absolute', top: space.md, right: space.lg, left: space.lg, alignItems: 'flex-end' },
   ticker: { fontFamily: fonts.display, fontSize: 40, letterSpacing: 1, textShadowRadius: 18, textShadowOffset: { width: 0, height: 0 } },
   mapChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   mapDot: { width: 6, height: 6, borderRadius: 3 },
