@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
-import { dateRange, initials, money } from '@/lib/format';
+import { date, dateRange, initials, money } from '@/lib/format';
 import { GAMES, gameLabel, useGame } from '@/lib/game';
 import { colors, fonts, gameColors, radius, space, touch, type } from '@/lib/theme';
 import type { GameKey, SquadMember, TournamentSummary } from '@/lib/types';
@@ -203,6 +203,38 @@ export function SquadLine({ members }: { members: SquadMember[] }) {
     </View>
   );
 }
+
+/** Compact tournament row for lists inside one card: date | name + meta | prize or winner. */
+export function EventRow({ t, first }: { t: TournamentSummary; first?: boolean }) {
+  return (
+    <Link href={{ pathname: '/tournament/[id]', params: { id: String(t.id) } }} asChild>
+      <Pressable style={first ? eventRow : eventRowRuled} android_ripple={{ color: colors.cardAlt }}>
+        <View style={{ width: 52 }}>
+          <Text style={[type.number, { color: colors.text }]}>{date(t.start, false)}</Text>
+          {t.status === 'ongoing' ? <Text style={[styles.liveText, { marginTop: 2 }]}>LIVE</Text> : null}
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[styles.text, { fontFamily: fonts.bodyBold }]} numberOfLines={1}>
+            {t.name}
+          </Text>
+          {t.winner ? (
+            <Winner name={t.winner} />
+          ) : (
+            <Text style={[styles.muted, { color: colors.faint }]} numberOfLines={1}>
+              {[t.tier, t.type, t.city].filter(Boolean).join(' · ')}
+            </Text>
+          )}
+        </View>
+        {t.prize ? <Text style={[type.number, { color: colors.good }]}>{money(t.prize, t.currency)}</Text> : null}
+      </Pressable>
+    </Link>
+  );
+}
+
+const eventRow = StyleSheet.flatten([
+  { flexDirection: 'row' as const, alignItems: 'center' as const, gap: space.md, minHeight: 60, paddingVertical: space.sm },
+]);
+const eventRowRuled = StyleSheet.flatten([eventRow, { borderTopWidth: 1, borderTopColor: colors.rule }]);
 
 export function SourceNote() {
   return <Text style={styles.source}>Data: Liquipedia (CC-BY-SA 3.0)</Text>;
