@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write   # the next-run job starts the following run
   contents: read
   pages: write
   id-token: write
@@ -105,3 +106,26 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # GitHub's cron is best-effort (on this repo it did not fire for hours), so every run also
+  # starts the next one ~25 minutes later. workflow_dispatch from GITHUB_TOKEN is allowed to
+  # trigger runs. Stop the chain by setting the repository variable AUTO_LOOP to "off".
+  next-run:
+    needs: deploy
+    if: always() && vars.AUTO_LOOP != 'off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Wait, then start the next run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 1500
+          # skip if another run is already waiting or running (cron or a manual run)
+          busy=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy.yml --json status \
+                 --jq '[.[] | select(.status == "queued" or .status == "waiting" or .status == "pending")] | length')
+          if [ "$busy" = "0" ]; then
+            gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main
+          else
+            echo "a run is already queued, not starting another"
+          fi
