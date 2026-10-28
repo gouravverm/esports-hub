@@ -16,12 +16,13 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: collect-and-deploy
-  cancel-in-progress: false
-
+# One collect/build and one deploy at a time; the next-run wait below is outside these groups,
+# so it never holds up a push or a manual run.
 jobs:
   build:
+    concurrency:
+      group: collect
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -99,6 +100,9 @@ jobs:
 
   deploy:
     needs: build
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -121,11 +125,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sleep 1500
-          # skip if another run is already waiting or running (cron or a manual run)
-          busy=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy.yml --json status \
-                 --jq '[.[] | select(.status == "queued" or .status == "waiting" or .status == "pending")] | length')
-          if [ "$busy" = "0" ]; then
+          # only the newest run keeps the chain going, so pushes and cron never start a second chain
+          created=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json createdAt --jq .createdAt)
+          newer=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy.yml --limit 20 --json createdAt \
+                  --jq "[.[] | select(.createdAt > \"$created\")] | length")
+          if [ "$newer" = "0" ]; then
             gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main
           else
-            echo "a run is already queued, not starting another"
+            echo "$newer newer run(s) exist; the newest one continues the chain"
           fi
