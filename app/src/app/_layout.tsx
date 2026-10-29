@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
 import { GameProvider } from '@/lib/game';
+import { PremiumProvider } from '@/lib/premium';
 import { colors, fonts } from '@/lib/theme';
 
 export default function RootLayout() {
@@ -21,24 +22,28 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={navTheme}>
-    <GameProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.bg },
-          headerShadowVisible: false,
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontFamily: fonts.display },
-          contentStyle: { backgroundColor: colors.bg },
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* the tournament's name is the screen's h1, so the bar shows only the back button */}
-        <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament', headerTitle: () => null }} />
-        <Stack.Screen name="team/[id]" options={{ title: 'Team' }} />
-        <Stack.Screen name="player/[id]" options={{ title: 'Player' }} />
-      </Stack>
-    </GameProvider>
+      <GameProvider>
+        <PremiumProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.bg },
+              headerShadowVisible: false,
+              headerTintColor: colors.text,
+              headerTitleStyle: { fontFamily: fonts.display },
+              contentStyle: { backgroundColor: colors.bg },
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            {/* the tournament's name is the screen's h1, so the bar shows only the back button */}
+            <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament', headerTitle: () => null }} />
+            <Stack.Screen name="team/[id]" options={{ title: 'Team' }} />
+            <Stack.Screen name="player/[id]" options={{ title: 'Player' }} />
+            <Stack.Screen name="premium" options={{ title: 'Premium' }} />
+            <Stack.Screen name="privacy" options={{ title: 'Privacy Policy' }} />
+          </Stack>
+        </PremiumProvider>
+      </GameProvider>
     </ThemeProvider>
   );
 }

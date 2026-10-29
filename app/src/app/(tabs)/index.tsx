@@ -3,6 +3,7 @@
 import { Link } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
 
+import { AdBanner } from '@/components/AdBanner';
 import { HeroCarousel, TopFraggers, TopTeams } from '@/components/showcase';
 import { Card, EventRow, ErrorView, GameSwitcher, Loading, Screen, SectionTitle, SourceNote, styles } from '@/components/ui';
 import { VideoRow } from '@/components/video';
@@ -58,6 +59,8 @@ export default function Home() {
           </>
         ) : null}
 
+        <AdBanner />
+
         {g.topTeams?.length ? (
           <>
             <SectionTitle
@@ -99,6 +102,8 @@ export default function Home() {
           ))}
         </Card>
 
+        <AdBanner />
+
         {g.videos?.length ? (
           <>
             <SectionTitle>Latest videos</SectionTitle>
@@ -110,6 +115,9 @@ export default function Home() {
           {g.count} tournaments · updated {data.updated.slice(0, 16).replace('T', ' ')} UTC
         </Text>
         <SourceNote />
+        <Link href="/privacy" style={[styles.muted, { color: colors.faint, textAlign: 'center', paddingBottom: space.xl }]}>
+          Privacy policy
+        </Link>
       </ScrollView>
     </Screen>
   );

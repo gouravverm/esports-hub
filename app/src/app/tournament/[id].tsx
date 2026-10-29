@@ -22,6 +22,7 @@ import {
   styles as ui,
 } from '@/components/ui';
 import { ChickenIcon, KillIcon, MapChip, shortName, TournamentBanner } from '@/components/graphics';
+import { AdBanner } from '@/components/AdBanner';
 import { PlayerStatsView } from '@/components/playerStats';
 import { Podium } from '@/components/showcase';
 import { VideoCard } from '@/components/video';
@@ -72,6 +73,7 @@ export default function TournamentScreen() {
           </View>
         )}
         {!tabs.length && <Empty text="Is tournament ka detailed data abhi available nahi hai" />}
+        <AdBanner />
         <SourceNote />
       </ScrollView>
     </Screen>
